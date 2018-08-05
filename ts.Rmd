@@ -1,0 +1,316 @@
+---
+title: "Untitled"
+author: "Maurício Collaça"
+date: "5 de agosto de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+A series
+```{r}
+set.seed(123)
+t <- seq(from = 1, to = 100, by = 1) + 10 + rnorm(100, sd = 7)
+plot(t)
+```
+```{r}
+args(ts)
+```
+
+Time series: quarterly data that starting in the first quarter of 2000.
+```{r}
+tseries <- ts(t, start = c(2000, 1), frequency = 4)
+print(tseries)
+```
+
+```{r}
+plot(tseries)
+```
+
+Multiple series.
+```{r}
+set.seed(123)
+seq <- seq(from = 1, to = 100, by = 1) + 10
+ts1 <- seq + rnorm(100, sd = 5)
+ts2 <- seq + rnorm(100, sd = 12)
+ts3 <- seq^2 + rnorm(100, sd = 300)
+tsm <- cbind(ts1, ts2, ts3)
+tsm <- ts(tsm, start=c(2000, 1), frequency = 4)
+plot(tsm)
+```
+
+plot.ts() arguments
+```{r}
+args(plot.ts)
+```
+
+Single panel and only 2 series
+```{r}
+plot(tsm[,1:2], plot.type=c("single"), col=1:2)
+```
+
+Convenience Functions for Time Series
+
+Only the data from the first quarter of 2000 to the last quarter of 2012
+```{r}
+tseries_sub <- window(tseries, start=c(2000, 1), end=c(2012,4))
+print(tseries_sub)
+```
+
+Start and End
+```{r}
+start(tsm)
+end(tsm)
+```
+Number of samples per unit time
+```{r}
+frequency(tsm)
+```
+Positions in the cycle of each observation
+```{r}
+cycle(tsm)
+```
+
+Interval time between observations
+```{r}
+deltat(tsm)
+```
+
+
+Time Series transformations
+
+There are a number of different functions that can be used to transform time series data such as the difference, log, moving average, percent change, lag, or cumulative sum.
+
+For example, the moving average function can be used to more easily visualize a high-variance time series and is also a critical part the ARIMA family of models. Functions such as the difference, percent change, and log difference are helpful for making non-stationary data stationary.
+
+lag: compute a lagged version of a time series, shifting the time base back by a given number of observations
+
+Lag 1 unit of observation
+```{r}
+(tseries_lag1 <- lag(tseries, 1))
+```
+
+Aligning former and lagged
+```{r}
+head(cbind(tseries, tseries_lag1))
+```
+
+Lag 3 units of observation
+```{r}
+(tseries_lag3 <- lag(tseries, 3))
+```
+
+Aligning former and lagged
+```{r}
+head(cbind(tseries, tseries_lag3))
+```
+
+Lag -1 (lead) its of observation
+```{r}
+(tseries_lead1 <- lag(tseries, -1))
+```
+
+Difference between each value and its previous value (lag 1)
+```{r}
+(tseries_diff1 <- diff(tseries, lag = 1))
+```
+
+```{r}
+tsd1 <- cbind(tseries, tseries_diff1)
+head(tsd1)
+```
+
+Taking a difference is an effective way to remove a trend and make a time series stationary
+```{r}
+plot(tsd1)
+```
+
+Difference between each value and its before previous value (lag 2)
+```{r}
+(tseries_diff2 <- diff(tseries, lag = 2))
+```
+
+```{r}
+tsd2 <- cbind(tseries, tseries_diff2)
+head(tsd2)
+```
+
+```{r}
+plot(tsd2)
+```
+
+Some time series transformation functions are useful for series in which the variance gets larger over time. These range from the *basic logarithm function* to the *Box-Cox group of transformations* (of which the natural logarithm is a special case). We can take the log of a time series using the log function in the same way that we would take the log of a vector. Let’s generate a time series that has increasing variance:
+
+```{r}
+trend <- ts(seq(from = 10, to = 110))
+cycle <- ts(sin(trend)) * 0.2 * trend
+tseries_h <- trend + cycle
+```
+```{r fig.height=7, fig.width=7}
+par(mfrow=c(3,1), mar=c(4,5,1,1))
+plot(trend)
+plot(cycle)
+plot(tseries_h, ylab="tseries_h\n(trend+cycle)")
+```
+
+The prevalence of **increasing, or more generally non-constant, variance** is called *heteroskedasticity* (sub-populations having difference variance from others) and can cause problems in linear regression. Often, it will need to be corrected before modeling. One way to do this is taking a log:
+
+```{r}
+tseries_log <- log(tseries_h)
+tm <-cbind(tseries_h, tseries_log)
+plot.ts(tm)
+```
+
+There are other more advanced ways of eliminating non-constant variance (heteroskedasticity), one of which is the **Box-Cox transformation**, which allows us a bit more control over the transformation. The Box-Cox takes the form (Hyndman and Athanasopoulos, 2013):
+
+$$w_t = \begin{cases} \log{ y_t }, \text{ if } \lambda = 0; \\ \frac{ ({y_t}^{\lambda} – 1) }{ \lambda },\text{ otherwise } \\ \end{cases} $$
+
+In order to demonstrate the Box-Cox transformation, I’ll introduce Rob Hyndman’s `forecast` package:
+
+```{r}
+library(forecast)
+```
+
+It has two functions that are of use here. The primary function is BoxCox(), which will return a transformed time series given a time series and a value for the parameter lambda:
+
+```{r}
+plot.ts(BoxCox(tseries_h, lambda = 0.5))
+```
+
+Notice that this value **0.5** of lambda here does not entirely take care of the heteroskedasticity problem. We can experiment with different values of lambda, or we can use the **BoxCox.lambda()** function, which will provide us an optimal value for parameter lambda:
+
+```{r}
+(lambda <- BoxCox.lambda(tseries_h))
+```
+
+The BoxCox.lambda() function has chosen the value 0.055. If we then use this value in our BoxCox() function, it returns a time series that appears to have constant variance.
+
+```{r}
+plot.ts(BoxCox(tseries_h, lambda = lambda))
+```
+
+Another common calculation that we may want to perform on time series is the **percent change** from one period to another.
+
+```{r}
+tseries_pch <- tseries / lag(tseries, -1) - 1
+head(cbind(tseries, tseries_pch))
+```
+
+A function to easily calculate percent change with an argument to specify the number of periods over which we want to calculate the change, defaults 1.
+
+```{r}
+pch <- function(data, lag = 1) {
+    if (!is.ts(data)) stop("data must be of type ts")
+    if (!is.numeric(lag)) stop("lag must be of type numeric")
+    data / lag(data, -lag) - 1
+}
+```
+
+Quarterly percent change
+```{r}
+head(cbind(tseries, pch_quarter=pch(tseries)))
+```
+
+Year over year percent change
+```{r}
+head(cbind(tseries, pch_year=pch(tseries, lag=4)))
+```
+
+Two of the functions that we have discussed so far, the difference and the log, are often combined in time series analysis. The **log difference** function is useful for making non-stationary data stationary and has some other useful properties.
+
+```{r}
+# tseries_dlog <- ts(diff(log(tseries)), start = c(2000, 1), frequency = 4)
+tseries_dlog <- diff(log(tseries)) # I think should not shift -1 as first example
+plot.ts(cbind(tseries, tseries_dlog))
+```
+
+Notice that after taking the log return, tseries appears to be stationary. We see some higher than normal volatility in the beginning of the series. This is due largely to the fact that the series levels start off so small. This leads into a nice property of the **log diference return function: a close approximation to the percent change**:
+
+```{r}
+plot.ts(cbind(pch(tseries), tseries_dlog))
+```
+
+This similarity is only approximate. The relationship does break down somewhat when the percent change from one period to the next is particularly large. You can read a good discussion of this topic [here](https://stats.stackexchange.com/questions/244199/why-is-it-that-natural-log-changes-are-percentage-changes-what-is-about-logs-th).
+
+A **moving average** is another essential function for working with time series. For series with particularly high volatility, a moving average can help us to more clearly visualize its trend. We can use base R’s filter() function, which allows us to perform general linear filtering. We can set up the parameters of this function to be a moving average (Shumway and Stoffer, 2011). Here we apply the filter() function to tseries to create a 5 period moving average. The filter argument lets up specify the filter, which in this case is just a weighted average of 5 observations. The sides argument allows us to specify whether we want to apply the filter over past values (sides = 1), or to both past and future values (sides = 2).
+
+```{r}
+tseries_lf5 <- filter(tseries, filter = rep(1/5, 5), sides = 1)
+head(cbind(tseries, tseries_lf5))
+```
+
+```{r}
+plot.ts(cbind(tseries, tseries_lf5), plot.type='single', col=c("black", "red"))
+```
+
+The fact that we have to define the linear filter each time we use this function makes it a little cumbersome to use. If we don’t mind introducing a dependency to our code, we could use the SMA() function from the TTR package or the ma() function from the forecast package. The SMA() function takes a ts object and a value for n – the window over which we want to calculate the moving average.
+
+```{r}
+library(TTR)
+tseries_ma5 <- SMA(tseries, n = 5)
+```
+
+The ma() function from the forecast package also performs moving average calculations. We supply the time series and a value for the order argument.
+
+```{r}
+tseries_ma5fore <- ma(tseries, order = 5)
+```
+
+Let’s compare the results. The SMA() function returns a trailing moving average where each value is the mean of the n most recent trailing values. This is equivalent to the results we get from using the filter() function. The ma() function from the forecast package returns a centered moving average. In this case tseries_ma5for is equal to the average of the current observation, the previous two observation, and the next two observations. Which one you use would depend on your application.
+
+```{r}
+head(cbind(tseries, tseries_lf5, tseries_ma5, tseries_ma5fore),10)
+```
+
+Real data
+
+Quandl has a great warehouse of financial, economic and alternative data, some of which is free.
+
+```{r}
+install.packages('Quandl')
+```
+
+Below is an example of using the Quandl R package to get housing price index data. This data originally comes from the Yale Department of Economics and is featured in Robert Shiller’s book “Irrational Exuberance”. We use the Quandl function and pass it the code of the series we want. We also specify “ts” for the type argument so that the data is imported as an R ts object. We can also specify start and end dates for the series. This particular data series goes all the way back to 1890. That is far more than we need so I specify that I want data starting in January of 1990. I do not supply a value for the end_date argument because I want the most recent data available. You can find this data on the web [here](https://www.quandl.com/data/YALE/NHPI-Historical-Housing-Market-Data-Nominal-Home-Price-Index).
+
+```{r}
+library(Quandl)
+Quandl.api_key("RJwCz1JqPdyLCdVShMXj")
+hpidata <- Quandl("YALE/NHPI", type="ts", start_date="1990-01-01")
+plot(hpidata, main = "Robert Shiller's Nominal Home Price Index")
+```
+
+While we are here, let’s grab some additional data series for later use. Below, I get data on US GDP and US personal income, and the University of Michigan Consumer Survey on selling conditions for houses. Again I obtained the relevant codes by browsing the Quandl website. The data are located on the web [here](https://www.quandl.com/data/FRED/GDP-Gross-Domestic-Product), [here](https://www.quandl.com/data/FRED/PINCOME-Personal-Income), and [here](https://www.quandl.com/data/UMICH/SOC43-University-of-Michigan-Consumer-Survey-Selling-Conditions-for-Houses).
+
+```{r}
+gdpdata <- Quandl("FRED/GDP", type="ts", start_date="1990-01-01")
+pidata <- Quandl("FRED/PINCOME", type="ts", start_date="1990-01-01")
+umdata <- Quandl("UMICH/SOC43", type="ts")[, 1]
+plot.ts(cbind(gdpdata, pidata),  main="US GPD and Personal Income, billions $")
+```
+
+```{r}
+plot.ts(umdata, main = "University of Michigan Consumer Survey, Selling Conditions for Houses")
+```
+
+he Quandl API also has some basic options for data preprocessing. The US GDP data is in quarterly frequency...
+```{r}
+frequency(gdpdata)
+```
+... but assume we want annual data. We can use the collapse argument to collapse the data to a lower frequency. Here we covert the data to annual as we import it.
+
+```{r}
+gdpdata_ann <- Quandl("FRED/GDP", type="ts", start_date="1990-01-01", collapse="annual")
+frequency(gdpdata_ann)
+```
+
+We can also transform our data on the fly as its imported. The Quandl function has a argument transform that allows us to specify the type of data transformation we want to perform. There are five options – “diff“, ”rdiff“, ”normalize“, ”cumul“, ”rdiff_from“. Specifying the transform argument as”diff” returns the simple difference, “rdiff” yields the percentage change, “normalize” gives an index where each value is that value divided by the first period value and multiplied by 100, “cumul” gives the cumulative sum, and “rdiff_from” gives each value as the percent difference between itself and the last value in the series. For more details on these transformations, check the API documentation [here](https://docs.quandl.com/).
+
+For example, here we get the data in percent change form:
+```{r}
+gdpdata_pc <- Quandl("FRED/GDP", type="ts", start_date="1990-01-01", transform="rdiff")
+plot(gdpdata_pc * 100, ylab= "% change", main="US Gross Domestic Product, % change")
+```
+
+You can find additional documentation on using the Quandl R package [here](https://docs.quandl.com/docs/r-time-series). I’d also encourage you to check out the vast amount of free data that is available on the site. The API allows a maximum of 50 calls per day from anonymous users. You can sign up for an account and get your own API key, which will allow you to make as many calls to the API as you like (within reason of course).
