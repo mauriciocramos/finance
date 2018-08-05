@@ -276,7 +276,7 @@ Below is an example of using the Quandl R package to get housing price index dat
 
 ```{r}
 library(Quandl)
-Quandl.api_key("RJwCz1JqPdyLCdVShMXj")
+Quandl.api_key(readLines("Quandl.api_key.txt",1))
 hpidata <- Quandl("YALE/NHPI", type="ts", start_date="1990-01-01")
 plot(hpidata, main = "Robert Shiller's Nominal Home Price Index")
 ```
