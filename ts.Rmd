@@ -124,7 +124,7 @@ There are a number of different functions that can be used to transform time ser
 
 For example, the moving average function can be used to more easily visualize a high-variance time series and is also a critical part the ARIMA family of models. Functions such as the difference, percent change, and log difference are helpful for making non-stationary data stationary.
 
-## lag()
+## Lag
 
 Compute a lagged version of a time series, shifting the time base back (positive lag) or forth (negative lag) by a given number of observations
 
@@ -146,7 +146,11 @@ tseries_lead1 <- lag(tseries, -1)
 head(cbind(tseries, tseries_lead1))
 ```
 
-## diff(): remove trend & make stationary
+## Difference
+
+diff() removes a linear trend, producing a so called change series or difference series
+
+### Removing a linear trend
 
 Difference between each value and its previous value (lag 1)
 ```{r}
@@ -157,18 +161,25 @@ head(tsd1)
 
 Taking a difference is an effective way to remove a trend and make a time series stationary
 ```{r}
-plot(tsd1, main="Difference (lag=1)")
+plot(tsd1, main="Removing linear trend")
 ```
 
-Difference between each value and its before previous value (lag 2)
-```{r}
-tseries_diff2 <- diff(tseries, lag = 2)
-tsd2 <- cbind(tseries, tseries_diff2)
-head(tsd2)
-```
+### Removing a seasonal trend
 
+```{r include=FALSE}
+tseries_season4 <- ts(c(-4.19803335973822, 9.56900905050747, 5.17514338906622, -9.69164636184119, 
+-3.21529357476552, 10.8436693062559, 6.45215865708188, -10.8335590731441, -2.23535073514566, 10.119832962947, 6.57964573528545, -8.65656473226148, -2.51500138847406, 9.83743416797243, 7.38619432726046, -8.24350355631342, 
+-4.26403257072438, 8.89886143008727, 8.54433581556254, -8.06691284107053, -4.02302530566536, 9.82267856454484, 7.77285238609707, -6.58777686807675, -3.45917112006633, 10.6138505016733, 7.37445047382904, -5.79871450522201, 
+-1.20471055826558, 11.4292358845515, 7.57004694873634, -4.96838375977415, -2.00378659668805, 11.9413482982078, 9.40667210265289, -4.39658482425492, -1.55557889273259, 12.5998771289623, 8.50291637845889, -3.72896826710606, 
+-2.82700000921691, 13.3759812867942, 8.12894114749321, -3.14924907770406, -2.79947272334396, 13.7105701226795, 6.75521688156725, -3.77974417787649, -3.76827394084617, 13.6253358560593, 6.53793056349892, -3.24909834265677, 
+-5.02419102826334, 13.3553731337997, 6.93116080641335, -3.52735350362993, -5.19732896878058, 11.5797913233393, 7.16244857247412, -1.89460681643879, -5.77779700690048, 12.4826952884178, 6.20808841277938, -3.43403797043816, 
+-7.08072100968159, 11.4136557746633, 6.74199013667799, -3.53237586423137, -8.39354230059932, 12.5072611286297, 6.47317547164243, -3.74524618197473, -9.42620870823793, 12.3808170457897, 8.04824272204917, -2.83152774381656, 
+-7.30189285880787, 12.7658383061004, 8.22369850629786, -4.44813067987144, -6.96355759602497, 12.0340049862918, 7.57492470964176, -5.40221818593254, -6.56819814480662, 10.8964815061608, 7.27657057973042, -4.03787337902209, 
+-6.72301328397502, 12.1808149692035, 8.28516213832065, -4.15934247966369, -6.36067044646075, 12.7530177649457, 8.66591165178255, -5.44053784032607, -4.87493170537183, 12.6001974041011, 8.16258920594197, -6.53957167229621))
+```
 ```{r}
-plot(tsd2, main="Difference (lag=2)")
+tseries_diff4 <- diff(tseries_season4, lag=4)
+plot.ts(cbind(tseries_season4, tseries_diff4), nc=2, main="Removing seasonal trends")
 ```
 
 ## Heteroskedasticity: non-constant (e.g. increasing) variance
@@ -185,10 +196,45 @@ plot(cbind(trend, cycle, "trend + cycle"=tseries_h), main="Simulated time series
 
 Some time series transformation functions are useful for series in which the variance gets larger over time. These range from the *basic logarithm function* to the *Box-Cox group of transformations* (of which the natural logarithm is a special case).
 
-## log(): corrects heteroskedasticity
+## Log transformation of a series
+
+### Correcting heteroskedasticity
 
 ```{r}
-plot(cbind(tseries_h, log(tseries_h)), main="Log transformation")
+plot(cbind(tseries_h, log(tseries_h)), nc=2, main="Log transformation of the heteroskedasticity")
+```
+
+### Linearizing a rapid growth trend
+```{r include=FALSE}
+rapid_growth <- c(505.954737316542, 447.35560816695, 542.583090477044, 516.063361274983, 506.959924087797, 535.016232606015, 496.929129437996, 497.562555328502, 
+577.248300530956, 536.855967325257, 541.245940412262, 473.497840289097, 550.988961460551, 569.410637437069, 522.915183368473, 487.200195130919, 
+594.610786395524, 591.173975668723, 615.986775394564, 621.317545120693, 607.125046916761, 587.036701378981, 554.155438462285, 644.117241827027, 
+509.700025728118, 607.094339401359, 603.55118553444, 613.621586650076, 544.914334775047, 670.811820766561, 687.13161588209, 615.581708859918, 
+711.187318608945, 694.297903386338, 681.929344495129, 659.140256189321, 642.702057830158, 601.530062712521, 666.762307473106, 650.965683100529, 
+606.091343627865, 696.678827373702, 641.602509472816, 855.771919797152, 667.329074652784, 573.491390192462, 791.733265065015, 751.591446783947, 
+610.794814080548, 624.65033623201, 833.298991700858, 639.886724484288, 736.828256803519, 772.292341071224, 686.886519321095, 667.763083378498, 
+712.94149525726, 918.183828402689, 656.108907724902, 700.497201964217, 683.493272462585, 781.737968201983, 715.684280499056, 808.287549436184, 
+820.779546770362, 656.885589359776, 733.339974340827, 773.538730437607, 641.202740082118, 932.21185739678, 680.676565427109, 988.282815285029, 
+664.898568280288, 813.528318290545, 883.408798971726, 924.274924691176, 969.43211824107, 777.329346514109, 880.998409919801, 971.358289510766, 
+902.958423571348, 1020.74565895517, 1075.14831710597, 886.170748719307, 889.632200892515, 950.390776999556, 878.039522146964, 1043.76763270868, 
+901.108966040025, 1079.65840856798, 933.905398508361, 921.9433013918, 870.807113616954, 811.139766624589, 1004.26766243592, 1008.17582581146, 
+1189.48933735193, 751.970606760973, 947.475252330288, 886.515305193286, 1074.89426408969, 1101.1306720708, 1130.1854576199, 975.849507265787, 
+948.161009999662, 1177.8226568287, 1227.12713297946, 976.995711035094, 836.708871866655, 1323.60473389093, 852.35320730904, 1200.82615703738, 
+1274.47884753083, 1349.2613900482, 1102.63337196778, 1324.85659429696, 1268.71865481688, 1058.22892886463, 1204.08723498947, 1084.65028499166, 
+1284.43050935569, 1195.28425174124, 1058.42621256846, 1188.0576623439, 1166.59336076, 1064.69458969538, 1429.06852442551, 1070.85280871704, 
+1539.33053352377, 1467.15710870044, 1127.70582024314, 1296.0717171226, 1555.27412822535, 1332.90372372162, 1315.4236396165, 1189.2461691901, 
+1482.43394167998, 1240.92868932515, 1237.77196935431, 1468.60833835437, 1328.54569942606, 1589.50783787689, 1373.16295850591, 1503.55627838567, 
+1659.93756371734, 1704.6136574176, 1550.46378217986, 1625.80261162794, 1873.85823632632, 1370.62086282574, 1439.71135339554, 1447.43691659102, 
+1579.91576345679, 1681.2571135903, 1661.60589978392, 1311.84684158442, 1326.03084218461, 1323.09951189813, 1550.48631755657, 1606.20420490403, 
+1768.54014627508, 1509.8367966576, 1592.10861892944, 1627.61875806856, 1544.63289803997, 1439.52343145633, 1682.35177380745, 1850.70970808186, 
+1673.38009271644, 1832.42716167314, 1672.26717594592, 1781.57683020519, 1659.28985001442, 1970.03886201406, 2044.7123676587, 1929.09019953541, 
+1891.7042228956, 1487.15774065956, 2013.8721752695, 1796.78863307401, 1977.01825843918, 1516.95521151591, 1650.6039164404, 1523.28339404562, 
+1696.6181065012, 1627.26087609279, 1787.29683278825, 1567.28735420676, 1881.99627254267, 2318.98327490681, 1941.98786180548, 1820.27972976969, 
+2154.81229145692, 2261.54706560833, 2052.22139601365, 2079.17104479186, 2010.06086639259, 2145.26059886687, 1775.30080127631, 2013.40704947701)
+```
+```{r}
+plot.ts(cbind(rapid_growth, linear_growth=log(rapid_growth)), plot.type = "multiple", nc=2,
+        main="Log transformation of a rapid linear growth")
 ```
 
 ## BoxCox() transformation: corrects heteroskedasticity
@@ -348,3 +394,368 @@ plot(gdpdata_pc * 100, ylab= "% change", main="US Gross Domestic Product, % chan
 ```
 
 You can find additional documentation on using the Quandl R package [here](https://docs.quandl.com/docs/r-time-series). The API allows a maximum of 50 calls per day from anonymous users. You can sign up for an account and get your own API key, which will allow you to make as many calls to the API as you like (within reason of course).
+
+# Time indexing
+
+## What does the time index tell us?
+
+Some data are naturally evenly spaced by time. Discrete time indexing is appropriate for discrete_data.
+```{r}
+discrete_data <- c(0.479425538604203, 0.841470984807897, 0.997494986604054, 0.909297426825682, 0.598472144103957, 0.141120008059867, -0.35078322768962, -0.756802495307928, -0.977530117665097, -0.958924274663138, -0.705540325570392, -0.279415498198926, 0.215119988087816, 0.656986598718789, 0.937999976774739, 0.989358246623382, 0.79848711262349, 0.412118485241757, -0.0751511204618093, -0.54402111088937)
+discrete_time_index <- 1:20
+plot(discrete_time_index, discrete_data, type="b", xaxt="n")
+axis(1, discrete_time_index)
+```
+
+The next time series continuous_series also has 20 observations, it is following the same periodic pattern as discrete_data, but its observations are not evenly spaced. Continuous time indexing is natural for continuous_series, however, the observations are approximately evenly spaced, with about 1 observation observed per time unit.
+
+```{r}
+continuos_data <- c(0.568894675391674, 0.766304082748762, 0.992075122074743, 0.974817414246897, 0.399123202687807, 0.37660246288782, -0.385320332818421, -0.836358518142533, -0.999669829045622, -0.998310189536195, -0.646222799842192, -0.0938615130061447, 0.400529093874378, 0.681605778899236,0.953181592214187, 0.996938027205692, 0.839341938468838, 0.370037544609373, -0.255096756784655, -0.617439825310109)
+continuous_time_index <- c(1.21032244665548, 1.74613730167039, 2.88963444461115, 3.59138367255218, 5.46206454467028, 5.51093333004974, 7.0742951775901, 8.26439798949286, 9.37338230921887, 9.5410633541178, 11.1611216005404, 12.378370850347, 13.3905590295326, 14.0662804655731, 15.0935473444406, 15.8645145166665, 16.8574128514156, 18.0914570542518, 19.3654514602385, 20.1805236600339)
+plot(continuous_time_index, continuos_data, type="b", xaxt="n")
+axis(1, round(continuous_time_index,1))
+```
+
+Let's investigate using a discrete time indexing for continuous_data.
+
+```{r}
+plot(discrete_time_index, continuos_data, type="b", xaxt="n")
+lines(loess(continuos_data ~ continuous_time_index), col=2)
+axis(1, discrete_time_index)
+```
+
+Note the various differences between the resulting figures, but the approximation appears reasonable because the overall trend remained preserved.
+
+## Sampling Frequency
+
+* Some time series data is exactly evenly spaced  
+* Some time series data is only approximately evenly spaced  
+* Some time series data is evenly spaced, but with missing values
+
+Simplifying assumptions for time series:
+
+* Consecutive observations are equally spaced  
+* Apply a discrete-time observation index  
+* This may only hold approximately
+
+Ex. Daily log returns on stock may only be a vailable for weekdays.  
+Ex. Monthly CPI values are equally spaced by month, not by day.
+
+# White Noise (WN)
+
+White Noise (WN) is the simplest example of a stationary process.
+
+A weak white noise process has:
+
+* A fixed, constant mean  
+* A fixed, constant variance  
+* No correlation over time
+
+The white noise (WN) model is a basic time series model. It is also a basis for the more elaborate models we will consider. We will focus on the simplest form of WN, independent and identically distributed data.
+
+The arima.sim() function can be used to simulate data from a variety of time series models. ARIMA is an abbreviation for the autoregressive integrated moving average class of models we will consider throughout this course.
+
+An ARIMA(p, d, q) model has three parts, the autoregressive order p, the order of integration (or differencing) d, and the moving average order q. ARIMA(0, 0, 0) model, i.e., with all of these components zero, is simply the WN model.
+
+## Simulate a WN model with $\mu$=0 and $\sigma$=1
+```{r}
+white_noise <- arima.sim(model = list(order=c(0,0,0)), n = 100)
+plot(white_noise, main="White Noise with mu = 0 and sigma = 1")
+abline(h=c(-1,0,1), lty=2)
+```
+
+## Simulate a WN model with $\mu$=100 and $\sigma$=10
+```{r}
+white_noise_2 <- arima.sim(model = list(order=c(0,0,0)), n = 100, mean = 100, sd = 10)
+plot(white_noise_2, main="White Noise with mu = 100 and sigma = 10")
+abline(h=c(90,100,110), lty=2)
+```
+
+## Estimate WN model and compare sample mean and variance
+```{r}
+arima(white_noise_2, order=c(0,0,0))
+```
+The estimate mean sample mean is exactly the sample mean and the estimate variance variance approximates the sample variance.
+```{r}
+mean(white_noise_2)
+var(white_noise_2)
+```
+
+# Random Walk (RW)
+
+Random Walk (RW) is a simple example of an unstable or non-stationary process.
+
+A random walk has:
+
+* No specified mean or variance  
+* Strong dependence over time, with each observation closely related to its imediate neighbors
+* Its changes or increments are white noise (WN) which is stable and stationary
+
+**Randow Walk recursion:**
+
+$$Today = Yesterday + Noise$$
+
+More formally:
+
+$$Y_t = Y{t-1} + \epsilon_t$$
+
+This error $\epsilon_t$ is *mean zero white noise* (WN)
+
+* Simulating RW requires an initial point $Y_0$  
+* Given $Y_0$ and the first WN term it's generated the first RW observation
+* And then proceed with the next time index
+* Often the value zero is used as initial point $Y_0$ for simplicity
+* The RW model has only one parameter, the WN variance $\sigma_\epsilon^2$
+
+**Random Walk process::**
+
+The terms in RW can be arrange as a *fist difference series*
+
+$$Y_t - Y{t-1} = \epsilon_t \rightarrow diff(Y) \ is \ WN$$
+## Simulate the random walk model with $\mu$=0
+
+The random walk (RW) model is also a basic time series model. It is the cumulative sum (or integration) of a mean zero white noise (WN) series, such that the first difference series of a RW is a WN series. Note for reference that the RW model is an ARIMA(0, 1, 0) model, in which the middle entry of 1 indicates that the model's order of integration is 1.
+
+The arima.sim() function can be used to simulate data from the RW by including the model = list(order = c(0, 1, 0)) argument. We also need to specify a series length n. Finally, you can specify a sd for the series (increments), where the default value is 1.
+
+```{r}
+random_walk <- arima.sim(model = list(order=c(0,1,0)), n = 100)
+plot(random_walk, main="Random Walk with mu = 0")
+```
+
+## Calculate the first difference series of the RW model
+
+The first difference of your random_walk data is white noise data. This is because a random walk is simply recursive white noise data. By removing the long-term trend, you end up with simple white noise.
+
+```{r}
+random_walk_diff <- diff(random_walk)
+plot(random_walk_diff, main="First difference of the Random Walk model")
+abline(h=c(-1,0,1), lty=2)
+```
+
+## Randow Walk with a Drift
+
+The Random Walk model can be extended to include an Intercept or Drift Coefficient.  This adds a constant $c$ to the recursive formula:
+
+$$Today = Constant + Yesterday + Noise$$
+
+More formally:
+
+$$Y_t = c + Y_{t-1} + \epsilon_t$$
+
+This error $\epsilon_t$ is *mean zero white noise* (WN)
+
+* The RW model has two parameters, constant $c$ and the WN variance $\sigma_\epsilon^2$
+
+The first difference of a RW with a Drift is simply a constant + Noise
+
+$$Y_t - Y_{t-1} = c + \epsilon_t \rightarrow WN \ with \ mean \ c$$
+
+### Simulate the random walk model with a drift, e.g., $\mu$=1
+
+A random walk (RW) need not wander about zero, it can have an upward or downward trajectory, i.e., a drift or time trend. This is done by including an intercept in the RW model, which corresponds to the slope of the RW time trend.
+
+For an alternative formulation, you can take the cumulative sum of a constant mean white noise (WN) series, such that the mean corresponds to the slope of the RW time trend.
+
+To simulate data from the RW model with a drift you again use the arima.sim() function with the model = list(order = c(0, 1, 0)) argument. This time, you should add the additional argument mean = ... to specify the drift variable, or the intercept.
+
+```{r}
+rw_drift <- arima.sim(model = list(order=c(0,1,0)), n = 100, mean = 1)
+plot(rw_drift, main="Random Walk with a Drift, e.g., mu = 1")
+```
+
+### Calculate the first difference series of a RW model with a Drift
+```{r}
+rw_drift_diff <- diff(rw_drift,1)
+plot(rw_drift_diff, main="First difference of the Random Walk model with a Drift")
+abline(h=c(0,1,2), lty=2)
+```
+
+## Estimate the random walk model
+
+For a given time series `y` we can fit the random walk model with a drift by first differencing the data, then fitting the white noise (WN) model to the differenced data using the `arima()` command with the `order = c(0, 0, 0))` argument.
+
+The `arima()` command displays information or output about the fitted model. Under the `Coefficients:` heading is the estimated drift variable, named the `intercept`. Its approximate standard error (or s.e.) is provided directly below it. The variance of the WN part of the model is also estimated under the label `sigma^2`.
+
+Given a Randow Noise model...
+```{r}
+rw_drift <- arima.sim(model = list(order=c(0,1,0)), n = 100, mean = 1)
+plot(rw_drift, main="Randow Walk with a Drift")
+```
+
+...first difference the data...
+```{r}
+rw_drift_diff <- diff(rw_drift)
+plot(rw_drift_diff)
+abline(h=c(0,1,2), lty=2)
+```
+
+...fit the White Noise model to the differenced data to find the intercept...
+```{r}
+model_wn <- arima(rw_drift_diff, order=c(0,0,0))
+model_wn$coef
+```
+
+...plot a time trend line with slope=0 and intercept from the WN model
+```{r}
+plot(rw_drift, main="Randow Walk with a Drift")
+abline(a=0, b=model_wn$coef, col=2)
+```
+
+# Stationary Processes
+
+## Stationarity
+
+To obtain parsimony in a time series model you often assume some form of distributional invariance over time, or, stationarity
+
+* Stationary models are parsimonious
+* Stationary processes have distributional stability over time
+
+For observed time series:
+
+* Fluctuation appears random
+* But behave similarly from one time period to the next
+
+For example, returns in stocks or changes in interest rates each has very different behaviour from the previous year but their mean, standard deviation and other statistical properties are often similar from one year to the next
+
+## Weak Stationarity
+
+A process $Y_1,Y_2,...$ is *weakly stationary* process if its mean, variance and covariance are unchanged by time shifts:
+
+* Mean $\mu$ of $Y_t$ is same (constant) for all $t$
+* Variance $\sigma^2$ of $Y_t$ is same (constant) for all $t$
+* Covariance of $Y_t$ and $Y_s$ is same (constant) for all $|t-s|=h$, for all $h$
+
+The covariance between $Y$ at time $t$ and time $s$ only depends on how close $t$ and $s$ are and not at time indexes $t$ and $s$ themselves
+
+For example, if the process is weakly stationary, $$Cov(Y_2, Y_5)=Cov(Y_7,Y_{10})$$ since each pair is separated by three units of time.
+
+## Why focus on Stationarity Models?
+
+A stationary process can be modeled with many fewer parameters.
+
+For example, we do not need a different expectation (mean) for each observation $Y_t$;
+rather they all have a common expectation (mean) $\mu$.
+
+Estimate $\mu$ accurately by $\bar y$
+
+When a time series is observed, a natural question is:
+
+>Is it stationary?  Especifically, is a stationary process model appropriated for this time series data?
+
+Many financial time series do not exhibit stationarity, however:
+
+* The changes in the series are often approximately stationary, perhaps after aplying a log transformation.
+
+* A stationary series should show random oscillation around some fixed level; a phenomenon called **mean-reversion**
+
+## Are the white noise model or the random walk model stationary?
+
+The white noise (WN) and random walk (RW) models are very closely related. However, only the RW is always non-stationary, both with and without a drift term.
+
+Recall that if we start with a mean zero WN process and compute its running or cumulative sum, the result is a RW process. The cumsum() function will make this transformation for you. Similarly, if we create a WN process, but change its mean from zero, and then compute its cumulative sum, the result is a RW process with a drift.
+
+```{r}
+wn <- arima.sim(model=list(order=c(0,0,0)), n=100)
+rw <- cumsum(white_noise)
+wn_drift <- arima.sim(model=list(order=c(0,0,0)), n=100, mean=0.4)
+rw_drift <- cumsum(wn_drift)
+plot.ts(cbind(wn, rw, wn_drift, rw_drift), main="WN and RN with and without drift")
+```
+
+# Scatterplots
+
+## Asset prices vs. asset returns
+
+The goal of investing is to make a profit. The revenue or loss from investing depends on the amount invested and changes in prices, and high revenue relative to the size of an investment is of central interest. This is what financial asset returns measure, changes in price as a fraction of the initial price over a given time horizon, for example, one business day.
+
+Let's again consider the eu_stocks dataset. This dataset reports index values, which we can regard as prices. The indices are not investable assets themselves, but there are many investable financial assets that closely track major market indices, including mutual funds and exchange traded funds.
+
+Log returns, also called continuously compounded returns, are also commonly used in financial time series analysis. They are the log of gross returns, or equivalently, the changes (or first differences) in the logarithm of prices.
+
+The change in appearance between daily prices and daily returns is typically substantial, while the difference between daily returns and log returns is usually small. As you'll see later, one advantage of using log returns is that calculating multi-period returns from individual periods is greatly simplified - you just add them together!
+
+Plotting prices
+```{r}
+data(EuStockMarkets)
+plot(EuStockMarkets)
+```
+
+Converting prices to (net) returns
+```{r}
+returns <- EuStockMarkets[-1,] / EuStockMarkets[-1860,] - 1
+returns <- ts(returns, start = c(1991, 130), frequency = 260)
+plot(returns)
+```
+
+Converting prices to log returns.
+```{r}
+logreturns <- diff(log(EuStockMarkets))
+plot(logreturns)
+```
+
+## Characteristics of financial time series
+
+Daily financial asset returns typically share many characteristics. Returns over one day are typically small, and their average is close to zero. At the same time, their variances and standard deviations can be relatively large. Over the course of a few years, several very large returns (in magnitude) are typically observed. These relative outliers happen on only a handful of days, but they account for the most substantial movements in asset prices. Because of these extreme returns, the distribution of daily asset returns is not normal, but heavy-tailed, and sometimes skewed. In general, individual stock returns typically have even greater variability and more extreme observations than index returns.
+
+The eu_percentreturns dataset is the percentage returns calculated from your EuStockMarkets data.
+
+```{r}
+eu_percentreturns <- pch(EuStockMarkets)
+plot(eu_percentreturns)
+```
+
+For each of the four indices contained in the data, it's calculated sample statistics mean, variance and standard deviation:
+
+Sample mean
+```{r}
+colMeans(eu_percentreturns)
+```
+
+Sample variances
+```{r}
+apply(eu_percentreturns, MARGIN = 2, FUN = var)
+```
+
+Sample standard deviations
+```{r}
+apply(eu_percentreturns, MARGIN=2, FUN=sd)
+```
+
+Histogram of percent returns for each index
+```{r}
+par(mfrow = c(2,2))
+invisible(apply(eu_percentreturns, MARGIN = 2, FUN = hist, main = "", xlab = "Percentage Return"))
+```
+
+Normal quantile plots of percent returns for each index
+```{r}
+par(mfrow = c(2,2))
+invisible(apply(eu_percentreturns, MARGIN = 2, FUN = qqnorm, main = ""))
+qqline(eu_percentreturns)
+```
+
+## Plotting pairs of data
+
+Time series data is often presented in a time series plot. For example, the index values from the eu_stocks dataset are shown in the adjoining figure. Recall, eu_stocks contains daily closing prices from 1991-1998 for the major stock indices in Germany (DAX), Switzerland (SMI), France (CAC), and the UK (FTSE).
+
+It is also useful to examine the bivariate relationship between pairs of time series. In this exercise we will consider the contemporaneous relationship, that is matching observations that occur at the same time, between pairs of index values as well as their log returns. The plot(a, b) function will produce a scatterplot when two time series names a and b are given as input.
+
+To simultaneously make scatterplots for all pairs of several assets the pairs() function can be applied to produce a scatterplot matrix. When shared time trends are present in prices or index values it is common to instead compare their returns or log returns.
+
+In this exercise, you'll practice these skills on the eu_stocks data. Because the DAX and FTSE returns have similar time coverage, you can easily make a scatterplot of these indices. Note that the normal distribution has elliptical contours of equal probability, and pairs of data drawn from the multivariate normal distribution form a roughly elliptically shaped point cloud. Do any of the pairs in the scatterplot matrices exhibit this pattern, before or after log transformation?
+
+Scatterplot matrix of eu_stocks
+```{r}
+pairs(EuStockMarkets)
+```
+
+Scatterplot matrix of logreturns
+```{r}
+logreturns <- diff(log(EuStockMarkets))
+pairs(logreturns)
+```
+
+# Autoregression (AR)
+
+# Simple Moving Average (MA)
