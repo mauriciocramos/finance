@@ -756,6 +756,300 @@ logreturns <- diff(log(EuStockMarkets))
 pairs(logreturns)
 ```
 
+# Covariance and Correlation
+
+Covariance depends on the scale of the variables so it's hard to intepret whether a value is large.
+
+Correlation is a standardized version of covariance that doesn't depend on the scale of the variables $$cor(x,y) = cov(x,y) / (\sigma_x \times \sigma_y)$$
+
+Sample covariances measure the strength of the linear relationship between matched pairs of variables. The cov() function can be used to calculate covariances for a pair of variables, or a covariance matrix when a matrix containing several variables is given as input. For the latter case, the matrix is symmetric with covariances between variables on the off-diagonal and variances of the variables along the diagonal. On the right you can see the scatterplot matrix of your logreturns data.
+
+Covariances are very important throughout finance, but they are not scale free and they can be difficult to directly interpret. Correlation is the standardized version of covariance that ranges in value from -1 to 1, where values close to 1 in magnitude indicate a strong linear relationship between pairs of variables. The cor() function can be applied to both pairs of variables as well as a matrix containing several variables, and the output is interpreted analogously.
+
+Covariance of DAX and FTSE log returns
+```{r}
+cov(logreturns[, "DAX"], logreturns[, "FTSE"])
+```
+Covariance matrix of log returns
+```{r}
+cov(logreturns)
+```
+Correlation of DAX and FTSE log returns
+```{r}
+cor(logreturns[, "DAX"], logreturns[, "FTSE"])
+```
+Correlation matrix of log returns
+```{r}
+cor(logreturns)
+```
+
+# Autocorrelation
+
+Autocorrelation is a very power tools for time series analysis. It's up to study how each time series observation is related to its recent past.  Processes with greatest autocorrelation are more predictable than those with don't.
+
+## Lag 1 Autocorrelation
+
+Compare each observation with it's preceeding one
+```{r}
+rw_series <- arima.sim(model = list(order=c(0,1,0)), n = 100, mean=0, sd=3)
+cor(rw_series[-length(rw_series)], rw_series[-1])
+```
+```{r}
+par(mfrow=c(1,2))
+plot(rw_series, main="Stock prices", ylab="Price")
+t <- length(rw_series)
+plot(rw_series[-t], rw_series[-1], xlab=expression("Price"[t-1]),
+     ylab=expression("Price"[t]), main="Lag 1 Scatterplot")
+abline(a=0,b=cor(rw_series[-t], rw_series[-1]))
+```
+
+## Lag 2 Autocorrelation
+
+```{r}
+par(mfrow=c(1,2))
+plot(rw_series, main="Stock prices", ylab="Price")
+t <- length(rw_series)
+plot(rw_series[-((t-1):t)], rw_series[-(1:2)], xlab=expression("Price"[t-2]),
+     ylab=expression("Price"[t]), main="Lag 2 Scatterplot")
+abline(a=0,b=cor(rw_series[-((t-1):t)], rw_series[-(1:2)]))
+```
+
+## Autocorrelation Function (acf) estimates for several lags simultaneously
+
+Correlation estimates
+```{r}
+acf(rw_series, plot=FALSE)
+```
+
+Correlation plots
+
+In this case the correlation becomes weaker as lags increases.  Each observation is positively associated with its predecessors until 17 lags but only the 12 first lags are statisticaly significant. The correlations become negative from lag 18 on.
+```{r}
+par(mar=c(4,4,4,1))
+acf(rw_series)
+```
+
 # Autoregression (AR)
+
+There are many autoregressive (AR) processes.  The simplest is the first order case in which today's observation is regressed on yesterday's observation at all times $t$.
+
+The Autoregressive Model
+
+The Autoregressive (AR) recursion:
+
+$$Today = Constant + Slope \times Yesterday + Noise$$
+
+Mean centered version:
+
+$$(Today − Mean) = Slope \times (Y esterday − Mean) + Noise$$
+
+More formally is $\epsilon$ is a mean zero white noise process than $Y$ is an AR process: $$Y_t - \mu = \phi(Y_{t-1} - \mu) + \epsilon_t$$
+
+where $\epsilon_t$ is mean zero white noise (WN)
+
+Three parameters:
+
+* The mean $\mu$
+* The slope $\phi$ (phi)
+* The **WN** variance $\sigma_\epsilon^2$
+
+If slope $\phi=0$ then $Y_t = \mu + \epsilon_t$ and $Y_t$ is White Noise $(\mu,\sigma_\epsilon^2)$.
+
+If slope $\phi \neq 0$ then $Y_t$ depends on both $\epsilon_T$ and $Y_{t-1}$ and the process is autocorrelated.
+
+Larger values of slope $\phi$ lead to greater autocorrelation.
+
+Negative values of slope $\phi$ result in oscillatory time series.
+
+if $\mu=0$ and slop $\phi=1$ then $$Y_t = Y_{t-1} + \epsilon_t$$ which is $$Today = Yesterday + Noise$$ which is a Random Walk (RW) process and $Y_t$ is not stationary in this case.
+
+## Simulate the autoregressive model
+
+The autoregressive (AR) model is arguably the most widely used time series model. It shares the very familiar interpretation of a simple linear regression, but here each observation is regressed on the previous observation (lag 1). The AR model also includes the white noise (WN) and random walk (RW) models examined in earlier chapters as special cases.
+
+The versatile `arima.sim()` function used in previous chapters can also be used to simulate data from an AR model by setting the `model` argument equal to `list(ar = phi)`, in which `phi` is a slope parameter from the interval (-1, 1). We also need to specify a series length `n`.
+
+This is the plot of three different AR models with slope parameters equal to 0.5, 0.9, and -0.75, respectively.
+
+```{r}
+x <- arima.sim(model = list(ar=0.5), n = 100)
+y <- arima.sim(model = list(ar=0.9), n = 100)
+z <- arima.sim(model = list(ar=-0.75), n = 100)
+plot.ts(cbind(x, y, z))
+```
+
+As you can see, your `x` data shows a just a moderate amount of autocorrelation due to its moderate slope `phi` while your `y` data shows a large amount of autocorrelation due to its large slope `phi`. Alternatively, your z data tends to oscillate considerably from one observation to the next due negative moderate-to-high slope `phi`.
+
+##Estimate the autocorrelation function (ACF) for an autoregression
+
+What if you need to estimate the autocorrelation function from your data? To do so, you'll need the acf() command, which estimates autocorrelation by exploring lags in your data. By default, this command generates a plot of the relationship between the current observation and lags extending backwards.
+
+These are the estimates of the autocorrelation function for the last threee simulated AR series (x, y, and z). These objects have slope parameters 0.5, 0.9, and -0.75, respectively:
+
+```{r}
+par(mfrow=c(1,3), mar=c(4,4,4,1))
+acf(x); acf(y); acf(z)
+```
+
+The first series `x` has positive autocorrelation for the first couple lags, but they quickly approach zero. The second series `y` has positive autocorrelation for many lags, but they also decay to zero. The last series `z` has an alternating pattern, as does its autocorrelation function (ACF), but its ACF still quickly decays to zero in magnitude.
+
+## Compare the random walk (RW) and autoregressive (AR) models
+
+The random walk (RW) model is a special case of the autoregressive (AR) model, in which the slope parameter is equal to `1`. Recall from previous chapters that the RW model is not stationary and exhibits very strong persistence. Its sample autocovariance function (ACF) also decays to zero very slowly, meaning past values have a long lasting impact on current values.
+
+The stationary AR model has a slope parameter between `-1` and `1`. The AR model exhibits higher persistence when its slope parameter is closer to `1`, but the process reverts to its mean fairly quickly. Its sample ACF also decays to zero at a quick (geometric) rate, indicating that values far in the past have little impact on future values of the process.
+
+### Simulate and plot AR model with slope 0.9 
+```{r}
+par(mfrow=c(2,1), mar=c(4,4,1,1))
+x <- arima.sim(model = list(ar=.9), n = 200)
+ts.plot(x)
+acf(x)
+```
+
+### Simulate and plot AR model with slope 0.98
+```{r}
+par(mfrow=c(2,1), mar=c(4,4,1,1))
+y <- arima.sim(model = list(ar=0.98), n=200)
+ts.plot(y)
+acf(y)
+```
+
+### Simulate and plot RW model
+```{r}
+par(mfrow=c(2,1), mar=c(4,4,1,1))
+z <- arima.sim(model = list(order=c(0,1,0)), n=200)
+ts.plot(z)
+acf(z)
+```
+
+As you can see, the AR model represented by series y exhibits greater persistence than series x, but the ACF continues to decay to 0. By contrast, the RW model represented by series z shows considerable persistence and relatively little decay in the ACF.
+
+## AR model estimation and forescasting
+
+### AR process: Inflation Rate
+
+* One-month US inflation rate (in percent, annual rate)  
+* Monthly observations from 1950 through 1990
+* The one-month inflation rate is the first column
+
+```{r}
+data(Mishkin, package = "Ecdat")
+inflation <- ts(Mishkin[, 1])
+par(mfrow=c(2,1), mar=c(4,4,1,1))
+ts.plot(inflation) ; acf(inflation)
+```
+
+From the time series plot one can see the inflation rate is usually positively valued and is fairly persistent, with and extend period of higher inflation beginning at the 1970's. From the ACF plot one can see strong, positive but decaying autocorrelation estimates from lags 1 to 26.  The AR model may provide a good fit to this data.
+
+
+### AR Model: Inflation rate
+
+Recall the AR model about to fit and the displaye equation:
+
+$$(Today − Mean) = Slope \times (Y esterday − Mean) + Noise$$
+$$Y_t - \mu = \phi(Y_{t-1} - \mu) + \epsilon_t$$
+$$\epsilon_t \sim WhiteNoise(0,\sigma_\epsilon^2)$$
+
+Applying ARIMA(1,0,0), a first order AR model, to the series inflation:
+
+```{r}
+AR_inflation <- arima(inflation, order = c(1, 0, 0))
+AR_inflation
+```
+
+* The `ar1` coefficient is the estimate of the Slope $\phi$
+```{r}
+AR_inflation$coef[1]
+```
+* The `intercept` is the estimate of the Mean $\mu$
+```{r}
+AR_inflation$coef[2]
+```
+* The `sigma^2` is the estimate of the White Noise $\sigma_epsilon^2$
+```{r}
+AR_inflation$sigma2
+```
+* Approximate standard errors `s.e.` appear bellow the coefficients $\phi$ `ar1` and $\mu$ `intercept`.
+
+### AR process: fitted values
+
+* Estimates of $Today$ given $Yesterday$:
+
+$$\widehat {Today} = \widehat {Mean} + \widehat {Slope} \times (Yesterday - \widehat {Mean})$$
+more formally:
+
+$$\hat Y_t =\hat\mu + \hat\phi(Y_{t-1} - \mu)$$
+
+* Residuals are the observed values minus fitted values.  They are estimates of the White Noise.
+
+$$Residuals = Today - \widehat {Today}$$
+
+more formally:
+$$\hat\epsilon_t = Y_t - \hat Y_t$$
+
+The observed values are in black and the fitted values are in red.
+```{r}
+ts.plot(inflation)
+AR_inflation_fitted <- inflation - residuals(AR_inflation)
+points(AR_inflation_fitted, type = "l", col = "red", lty = 2)
+```
+
+### Forecasting
+
+#### Inflation Rate
+1-step ahead forecasts
+```{r}
+predict(AR_inflation)
+```
+6-steps ahead forecasts
+```{r}
+predict(AR_inflation, n.ahead=6)
+```
+
+#### Air Passengers
+```{r}
+AR <- arima(AirPassengers, order=c(1,0,0))
+print(AR)
+```
+Plot the AirPassengers series and fitted values
+```{r}
+ts.plot(AirPassengers)
+AR_fitted <- AirPassengers - residuals(AR)
+points(AR_fitted, type = "l", col = 2, lty = 2)
+```
+
+#### The flow of River Nile
+
+Forecasts using an AR model applied to the Nile data, which records annual observations of the flow of the River Nile from 1871 to 1970.
+
+Fit an AR model to Nile
+```{r}
+AR_fit <-arima(Nile, order  = c(1,0,0))
+AR_fit
+```
+
+Predict 1-step forecast
+```{r}
+predict_AR <- predict(AR_fit)
+predict_AR$pred[1]
+```
+
+Predict 1-step through 10-steps forecasts
+```{r}
+predict(AR_fit, n.ahead = 10)$pred[1:10]
+```
+
+Plot the Nile series plus the forecast and 95% prediction intervals
+```{r}
+ts.plot(Nile, xlim = c(1871, 1980))
+AR_forecast <- predict(AR_fit, n.ahead = 10)$pred
+AR_forecast_se <- predict(AR_fit, n.ahead = 10)$se
+points(AR_forecast, type = "l", col = 2)
+points(AR_forecast - 2*AR_forecast_se, type = "l", col = 2, lty = 2)
+points(AR_forecast + 2*AR_forecast_se, type = "l", col = 2, lty = 2)
+```
+
+The predictions of River Nile flow from 1971 to 1980 make sense based on the data available. The relatively wide band of confidence (represented by the dotted lines) is a result of the low persistence in the Nile data.
 
 # Simple Moving Average (MA)
