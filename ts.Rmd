@@ -13,7 +13,8 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+options(width = 100)
 ```
 
 # A random normal series
@@ -450,6 +451,7 @@ A weak white noise process has:
 * A fixed, constant mean  
 * A fixed, constant variance  
 * No correlation over time
+* i.e. Idependent and Identically Distributed (IID) variables
 
 The white noise (WN) model is a basic time series model. It is also a basis for the more elaborate models we will consider. We will focus on the simplest form of WN, independent and identically distributed data.
 

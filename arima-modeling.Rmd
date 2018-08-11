@@ -1,0 +1,274 @@
+---
+title: "ARIMA modeling"
+author: "Maurício Collaça"
+date: "11 de agosto de 2018"
+output: 
+  html_document: 
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+    toc_float:
+        collapsed: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Time Series Regression Models
+
+Regression: $Y_i = \beta X_i + \epsilon_i$ where $\epsilon_i$ is **white noise**
+
+## White Noise (WN)
+
+* independent normals with common variance  
+* is basic building block of time series
+
+## AutoRegression (AR)
+
+$X_t = \phi X_{t-1} + \epsilon_t$ ($\epsilon_t$ is **white noise**)
+
+Tipically time series data are correlated and assuming error are not correlated may lead to a bad forecast.  One way to overcome this problems is to use a Moving Average for the errors.
+
+## Moving Average (MA)
+
+$\epsilon_t = W_t + \theta W_{t-1}%$ ($W_t$ is **white noise**)
+
+Errors $\epsilon_t$ at time t are correlated to the errors $\epsilon_{t-1}$ at time t-1 because the both have a "$W_{t-1}$"
+
+## Autoregressive + Moving Average (ARMA)
+
+$X_t = \phi X_{t-1} + W_t + \theta W_{t-1}$
+
+Putting these two together is a model with autocorrelation and autocorrelated errors.
+
+# Stationarity and Nonstationarity
+
+In the context of time series, it is stationary when it is “stable”, meaning:
+
+* the mean is constant over time (no trend)  
+* the correlation structure remains constant over time
+
+Stationarity means we can use simple averaging to estimate $\bar X$ correlation.
+
+Pairs can be used to estimate correlation on different lags: (x1,x2)(x2,x3)... for lag 1.
+
+This works because relation between contiguous values of the series remains the same overtime.
+
+Similarly (x1,x3)(x2,x4)... for lag 2.
+
+Stationary example: Southern Oscillation Index
+
+Reasonable to assume stationary, but perhaps some slight trend.
+
+```{r}
+library(astsa)
+plot(soi)
+```
+
+Scatter plots show correlation in terms of lag.
+
+To estimate autocorrelation, compute the correlation coefficient between the time series and itself at various lags.
+
+Correlation at lag 1 (e.g. positive) and lag 6 (e.g. negative).  In this case 6 periods are months where correlation changes between summer and winter.
+
+```{r}
+par(mfrow=1:2, mar=c(4,4,2,1))
+plot(lag(soi,-1), soi)
+legend("topleft",legend=round(cor(soi[-1], soi[-length(soi)]),3))
+plot(lag(soi,-6), soi)
+legend("topleft", legend=round(cor(soi[-(1:6)], soi[-((length(soi)-5):length(soi))]),3))
+```
+
+# Random Walk Trend
+
+The global temperature deviation is an example of Random Walk (not stationary) but its differenced data is stationary.
+
+```{r}
+plot(cbind(globtemp, diff(globtemp)), main="Global mean land-ocean temperature deviations")
+```
+
+# Trend Stationary
+
+Stationarity around a trend, differencing still works.
+
+```{r}
+plot(cbind(chicken, diff(chicken)), main="Monthly price of a pound of chicken")
+```
+
+# Nonstationarity in trend and variability
+
+First log can stabilize the variance, then difference can detrend.
+
+```{r}
+plot(cbind(jj, log(jj), diff(log(jj))), main="Johnson and Johnson Quarterly Earnings Per Sharen")
+```
+
+Often time series are generated as $X_t=(1+p_t)X_{t−1}$ meaning that the value of the time series observed at time $t$ equals the value observed at time $t−1$ and a small percent change $pt$ at time $t$.
+
+A simple deterministic example is putting money into a bank with a fixed interest $p$. In this case, $X_t$ is the value of the account at time period $t$ with an initial deposit of $X_0$.
+
+Typically, $p_t$ is referred to as the return or growth rate of a time series, and this process is often stable.
+
+For reasons that are outside the scope of this course, it can be shown that the growth rate $p_t$ can be approximated by
+$Y_t=log(X_t)−log(X_{t−1})\approx p_t$.
+
+# Stationary Time Series: ARMA
+
+Why to use ARMA models for stationary time series data?
+
+Wold Decomposition
+
+Wold proved that any stationary time series may be represented as a linear combination of white noise:
+
+$$X_t = W_t + a_1 W_{t-1} + a_2 W_{t-2} + ...$$
+For constants $a_1, a_2, ...$
+
+Any ARMA model has this form, which means they are suited to modeling time series.
+
+Note: Special case of MA($q$) is already of this form, where constants are $0$ after $q$-th term.
+
+# Generating ARMA using arima.sim()
+
+    arima.sim(model, n, ...)
+
+* model is a list with order of the model as c(p, d, q) and the coefficients 
+    * p is the order of the AR
+    * q is the order of the MA
+* n is the length of the series
+
+## MA(1)
+
+Recall $$X_t = W_t + \theta W_{t-1}%$$
+Given $\theta=0.9$ $$X_t = W_t + 0.9W_{t-1}$$
+```{r}
+plot(arima.sim(model=list(order=c(0,0,1), ma=0.9), n=100))
+```
+
+## AR(2)
+
+Recall $$X_t = \phi X_{t-2} + W_t$$
+Given $\phi=-0.9$ $$X_t =-0.9 X_{t-2} + W_t$$
+```{r}
+plot(arima.sim(model=list(order=c(2,0,0), ar=c(0,-0.9)), n=100))
+```
+
+Notice the data are somewhat cyclic.
+
+Generating and plotting WN
+
+```{r}
+plot(arima.sim(model = list(order=c(0,0,0)), n=100))
+```
+
+# AR and MA Models
+
+You can't identify a model simply looking at the data:
+
+```{r}
+x <- arima.sim(list(order = c(1, 0, 0), ar = -.7), n = 200)
+y <- arima.sim(list(order = c(0, 0, 1), ma = -.7), n = 200)
+par(mfrow = c(1, 2))
+plot(x, main = "AR(1)")
+plot(y, main = "MA(1)")
+```
+
+## ACF and PACF identify Model's orders
+
+Autocorrelation Function and Partial Autocorrelation Function.
+
+function | AR(p)          | MA(q)         | ARMA(p, q)
+---------|----------------|---------------|-----------
+ACF      | Tails off      | Cut off lag q | Tails of
+PACF     | Cuts off lag p | Tails off     | Tails off
+
+### AR(2) ACF/PACF
+```{r}
+par(mfrow=c(1,2))
+invisible(acf2(arima.sim(model=list(order=c(2,0,0), ar=c(0,-0.9)), n=100)))
+```
+
+### MA(1)) ACF/PACF
+```{r}
+par(mfrow=c(1,2))
+invisible(acf2(arima.sim(model=list(order=c(0,0,1), ma=0.9), n=100)))
+```
+
+# Estimation
+
+* Estimation for time series is similar to using least squares for regression
+    * For time series it's much harder and the results are not explicity.
+* Estimates are obtained numerically using ideas of Gauss and Newton
+
+## Estimation with astsa::sarima
+
+### AR(2) with mean 50
+
+$$(Today − Mean) = Slope \times (Y esterday − Mean) + Noise$$
+$$X_t = 50 + 1.5(X_{t-1} - 50) - .75(X_{t-2} -50) + W_t$$
+```{r}
+x <- arima.sim(list(order = c(2,0,0), ar = c(1.5,-.75)), n=200) + 50
+x_fit <- sarima(x, p=2, d=0, q=0, details=FALSE)
+x_fit$ttable
+```
+
+As expected, ACF tails off and PACF cuts off lag 2: AR(2)
+```{r}
+invisible(acf2(x))
+```
+
+### MA(1) with mean 0
+
+$$X_t = W_t + \theta W_{t-1}%$$
+$$X_t = W_t + .7 W_{t-1}%$$
+```{r}
+y <- arima.sim(list(order = c(0,0,1), ma=-.7), n=200)
+y_fit <- sarima(y, p=0, d=0, q=1, details=FALSE)
+y_fit$ttable
+```
+
+As expected, ACF cuts off lag 1 and PACF tails off: MA(1)
+```{r}
+invisible(acf2(y))
+```
+
+# AR and MA together
+
+Autocorrelation and autocorrelated errors
+
+$$X_t = \phi X_{t-1} + W_t + \theta W_{t-1}$$
+Given $\phi=.9$ and $\theta=.4$, $$X_t = .9 X_{t-1} + W_t + .4 W_{t-1}$$
+
+```{r}
+x <- arima.sim(list(order = c(1,0,1), ar=.9, ma=-.4), n=200)
+plot(x, main = "ARMA(1, 1)")
+```
+
+For an ARMA model both ACF/PACF tail off:
+```{r}
+invisible(acf2(x))
+```
+
+Estimation from an ARMA(1,1) model with mean 50
+
+$$X_t = .9 X_{t-1} + W_t + .4 W_{t-1} + 50$$
+
+```{r}
+x <- arima.sim(list(order = c(1, 0, 1), ar = .9, ma = -.4 ), n = 200) + 50
+x_fit <- sarima(x, p = 1, d = 0, q = 1, details=FALSE)
+x_fit$ttable
+```
+
+Estimation from a simulated ARMA(2,1)
+
+$$X_t = X_{t-1} + -.9 X_{t-2} + W_t + .8 W_{t-1}$$
+```{r}
+x <- arima.sim(list(order = c(2, 0, 1), ar = c(1, -.9), ma = .8 ), n = 250)
+plot(x)
+```
+```{r}
+x_fit <- sarima(x, p = 2, d = 0, q = 1, details=FALSE)
+x_fit$ttable
+```
+
