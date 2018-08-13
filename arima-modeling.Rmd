@@ -13,7 +13,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, comment = "")
 ```
 
 # Time Series Regression Models
@@ -180,7 +180,7 @@ Autocorrelation Function and Partial Autocorrelation Function.
 
 function | AR(p)          | MA(q)         | ARMA(p, q)
 ---------|----------------|---------------|-----------
-ACF      | Tails off      | Cut off lag q | Tails of
+ACF      | Tails off      | Cut off lag q | Tails off
 PACF     | Cuts off lag p | Tails off     | Tails off
 
 ### AR(2) ACF/PACF
@@ -270,5 +270,481 @@ plot(x)
 ```{r}
 x_fit <- sarima(x, p = 2, d = 0, q = 1, details=FALSE)
 x_fit$ttable
+```
+
+# Model choice and Residual Analysis
+
+## AIC and BIC
+
+It's often two ore more models seems reasonable. It's tipically a good idea to fit a few models before deciding on the best one. 
+
+AIC and BIC ate the two most popular methods to choose the best model.
+
+As more parameters are include in the model the error gets smaller whether or not the parameters are needed.
+
+* AIC and BIC measure the error and penalize (differently) for adding parameters.  
+* For example, AIC has $k=2$ and BIC has bigger penalty $k=log(n)$ and tends to choose a model with fewer parameters but the two however often agree.  
+* Goal: find the model with the smallest AIC or BIC
+
+## Model Choice: AR(1) vs. MA(2)
+
+Quarterly U.S. GNP
+```{r}
+gnpgr <- diff(log(gnp))
+plot(cbind(gnp, gnpgr), main="Quarterly U.S. GNP")
+```
+
+AR(1)
+```{r}
+sarima(gnpgr, p = 1, d = 0, q = 0, details=FALSE)[c("AIC","BIC")]
+```
+MA(2)
+```{r}
+sarima(gnpgr, p = 0, d = 0, q = 2, details=FALSE)[c("AIC","BIC")]
+```
+
+AIC prefers the MA(2) while BIC preferes the AR(1).
+
+Since the AR(1) is a simpler model it'll be appropriate to prefer that.
+
+# Residual Analsys
+
+The basic of the residual analysis is the same as in the Regression.  We want to make sure that residuals are white gaussian noise, otherwise, we haven't found the best model.
+
+## AR(1) fit to the Gross Rate of Quarterly U.S.GNP
+
+1) The plot for standardized residuals shouldn't be expected for patterns. It's difficult to tell it's white noise right from the plot but it's easy to tell it's not. For example, are there obvious patterns in the residuals?
+
+2) The ACF of the residuals can be used to assess whiteness.  99% of the values should be between dashed blue lines.
+
+3) The Q-Q plot assess the normality. If the residuals are normal the points will lie over the line.  There are often extreme values at the ends.  As long as there aren't huge departures from the line then the normal assumption is reasonable.
+
+4) There is Q-statistic that tests for whiteness of the residuals.  As long as the most points are above the blue dash lines then it can be safely assume the noise is white.  If however many of the points are bellow the line than there's still correlation left in the residuals and it should try another model or add a parameter.
+
+Here the residuals are fine.
+
+```{r fig.height=7, fig.width=7}
+sarima(gnpgr, p = 1, d = 0, q = 0)
+```
+
+## Find the best model for Annual Varve log difference Series
+
+```{r}
+data(varve)
+dl_varve <- diff(log(varve))
+plot(cbind(varve, dl_varve), main="Annual Varve Series")
+```
+
+### Fitting an MA(1) model
+```{r}
+sarima(dl_varve,0,0,1, details=FALSE)[c("AIC", "BIC")]
+```
+
+### Fitting an MA(2) model improved the AIC and BIC over the MA(1) model
+```{r}
+sarima(dl_varve,0,0,2, details=FALSE)[c("AIC", "BIC")]
+```
+
+### Fitting an ARMA(1,1) model improved the AIC and BIC over the MA(2) model
+```{r}
+sarima(dl_varve,1,0,1, details=FALSE)[c("AIC", "BIC")]
+```
+
+AIC and BIC help you find the model with the smallest error using the least number of parameters. The idea is based on the parsimony principle, which is basic to all science and tells you to choose the simplest scientific explanation that fits the evidence.
+
+## Residual Analysis of models MA(1) and ARMA(1,1) for the Annual Varve log difference Series
+
+### MA(1) model
+```{r fig.height=7, fig.width=7}
+sarima(dl_varve,0,0,1)
+```
+
+**Residual analysis:**
+
+1. The standardized residuals should behave as a white noise sequence with mean zero and variance one. Examine the residual plot for departures from this behavior.
+
+    It's hard to say.  It seems not so white.
+
+2. The sample ACF of the residuals should look like that of white noise. Examine the ACF for departures from this behavior.
+
+    There are 3 values outside the range, possibly not white noise.
+
+3. Normality is an essential assumption when fitting ARMA models. Examine the Q-Q plot for departures from normality and to identify outliers.
+
+    There's reasonable normality with few outliers.
+
+4. Use the Q-statistic plot to help test for departures from whiteness of the residuals.
+
+    All p-values are bellow the limit, confirming it there's still correlation in the residuals and this is not a good model fit.
+
+### ARMA(1,1) model
+```{r fig.height=7, fig.width=7}
+sarima(dl_varve,1,0,1)
+```
+
+**Residual Analysis:**
+
+1. The standardized residuals should behave as a white noise sequence with mean zero and variance one. Examine the residual plot for departures from this behavior.
+
+    As in the previous case, it's hard to say.  It seems not so white.
+
+2. The sample ACF of the residuals should look like that of white noise. Examine the ACF for departures from this behavior.
+
+    All values are inside the range, possibly white noise.
+
+3. Normality is an essential assumption when fitting ARMA models. Examine the Q-Q plot for departures from normality and to identify outliers.
+
+    As in the previous case, there's reasonable normality with few outliers.
+
+4. Use the Q-statistic plot to help test for departures from whiteness of the residuals.
+
+    All p-values are above the limit, confirming there's no correlation in the residuals and this is a good model fit.
+
+## Fitting a model to Crude oil, WTI spot price FOB
+
+### Calculate approximate oil returns
+```{r}
+data(oil)
+oil_returns <- diff(log(oil))
+```
+
+### Plot oil_returns.
+
+Notice that there are a couple of outliers prior to 2004. Convince yourself that the returns are stationary.
+```{r}
+plot(cbind(oil, oil_returns), main="Crude oil, WTI spot price FOB ($/barrel), weekly data, 2000 to mid-2010")
+```
+
+### Plot the P/ACF pair for oil_returns
+```{r}
+acf2(oil_returns)
+```
+
+### Fit a model to oil_returns
+
+From the P/ACF pair, it is apparent that the correlations are small and the returns are nearly noise. But it could be that both the ACF and PACF are tailing off. If this is the case, then an ARMA(1,1) is suggested. Fit this model to the oil returns using sarima().
+
+```{r fig.height=7, fig.width=7}
+sarima(oil_returns, 1,0,1)
+```
+
+It seems not a good fit because most of the p-values are bellow the limit.
+
+# ARIMA - Integrated ARMA
+
+A time series is called ARIMA(p,d,q) if the differenced series (of order d) is ARMA(p,q).
+
+## Identifying ARIMA
+
+A time series exhibits ARIMA behavior if the differenced data has ARMA behavior.
+
+Simulation ARIMA(p = 1, d = 1, q = 0)
+```{r}
+x <- arima.sim(list(order = c(1, 1, 0), ar = .9), n = 200)
+par(mfrow=1:2)
+plot(x, main = "ARIMA(p = 1, d = 1, q = 0)")
+plot(diff(x), main = "ARMA(p = 1, d = 0, q = 0)")
+```
+
+## ACF and PACF of an Integrated ARMA
+
+ACF decays in a linear fashion and PCF is almost 1 at lag one.
+
+```{r}
+x <- arima.sim(list(order = c(1, 1, 0), ar = .9), n = 200)
+acf2(x)
+```
+
+## ACF and PACF of a differenced ARMA
+
+Indicates and ARMA model for the differenced data: ACF tails off, PACF cutsoff at lag one.
+
+```{r}
+x <- arima.sim(list(order = c(1, 1, 0), ar = .9), n = 200)
+acf2(diff(x))
+```
+
+## Weekly Oil Prices
+
+```{r}
+par(mfrow=2:1)
+plot(oil, main="Weekly Price of Oil: Random Walk")
+plot(diff(oil), main="Differenced Price of Oil: Stationary")
+invisible(acf2(diff(oil)))
+```
+
+Both ACF and PACF tail off, suggesting an ARMA(1,1) model on the differenced data or an ARIMA(1,1,1) on the data itself.
+
+## ARIMA - Plug and Play
+
+Simulated data from the integrated model $$Y_t=.9Y_t−1+W_t$$ where $Y_t=\nabla X_t=X_t−X_{t−1}$. In this case, the model is an ARIMA(1,1,0) because the differenced data are an autoregression of order one.
+
+Plot x
+```{r}
+x <- arima.sim(model = list(order = c(1, 1, 0), ar = .9), n = 200)
+plot(x)
+```
+
+Plot the P/ACF pair of x
+```{r}
+acf2(x)
+```
+
+Plot the differenced data
+```{r}
+plot(diff(x))
+```
+
+Plot the P/ACF pair of the differenced data
+
+Note how they imply an AR(1) model for the differenced data.  ACF tails off and PACF cuts off.
+
+```{r}
+acf2(diff(x))
+```
+
+Differencing the data in your ARIMA(1,1,0) model makes it stationary and allows for further analysis
+
+## Slightly more complicated simulated ARIMA
+
+250 observations from the ARIMA(2,1,0) model with drift given by
+
+$$Y_t=1+1.5Y_{t−1}−.75Y_{t−2}+W_t$$
+
+where $Y_t=\nabla X_t=X_t−X_{t−1}$
+
+```{r}
+x <- arima.sim(model = list(order = c(2, 1, 0), ar = c(1.5, -.75)), n = 250, mean=1)
+par(mfrow=2:1)
+plot(x, main=expression(x[t]))
+plot(diff(x), main=expression(paste(y[t], "=", x[t]-x[t-1])))
+```
+
+Plot sample P/ACF of differenced data and determine model
+```{r}
+invisible(acf2(diff(x)))
+```
+
+Estimate parameters and examine output
+```{r}
+sarima(x, 2,1,0, details=FALSE)$ttable
+```
+
+The estimated parameters are very close to 1.5 and -0.75
+
+## Global Warming
+
+```{r}
+plot(cbind(globtemp, diff(globtemp)), main="Global mean land-ocean temperature deviations")
+```
+
+Plot the sample P/ACF pair of the differenced data
+```{r}
+invisible(acf2(diff(globtemp)))
+```
+
+Either:
+
+1. The ACF and the PACF are both tailing off, implying an ARIMA(1,1,1) model.
+
+2. The ACF cuts off at lag 2, and the PACF is tailing off, implying an ARIMA(0,1,2) model.
+
+3. The ACF is tailing off and the PACF cuts off at lag 3, implying an ARIMA(3,1,0) model. Although this model fits reasonably well, it is the worst of the three (you can check it) because it uses too many parameters for such small autocorrelations.
+
+Fit an ARIMA(1,1,1) model to globtemp
+```{r}
+sarima(globtemp, 1,1,1, details = FALSE)[c("ttable", "AIC", "BIC")]
+```
+All parameters are significant.
+
+Fit an ARIMA(0,1,2) model to globtemp
+```{r}
+sarima(globtemp, 0,1,2, details = FALSE)[c("ttable", "AIC", "BIC")]
+```
+
+All parameters are significant and both AIC and BIC shows this model is a better fit.
+
+Fit an ARIMA(3,1,0) model to globtemp
+```{r}
+sarima(globtemp, 3,1,0, details = FALSE)[c("ttable", "AIC", "BIC")]
+```
+
+The drift estimate is not significant and AIC/BIC are worse than previous models.
+
+# ARIMA Diagnostics
+
+Diagnostics ARIMA models is the same as for ARMA models.
+
+Once a model seems reasonable, try adding a parameter to see if it makes an improvement.  If it does so, change the model, otherwise the model is fitted.
+
+## Weekly Oil Prices ARIMA(1,1,1)?
+
+For this example, the Oil Series is subset until 2006.
+```{r}
+par(mfrow=2:1, mar=c(2,3,1,1))
+data(oil)
+plot(oil)
+abline(v=2006, lty=2)
+oil2006 <- window(oil, end = 2006)
+plot(oil2006)
+```
+
+The P/ACF of the detrended oil price appears to tail off, suggesting an ARIMA(1,1,1)
+```{r}
+par(mfrow=2:1)
+plot(oil2006, main="Weekly Price of Oil until 2006")
+plot(diff(oil2006), main="Differenced Price of Oil until 2006")
+invisible(acf2(diff(oil2006)))
+```
+
+```{r fig.height=7, fig.width=7}
+sarima(oil2006, p = 1, d = 1, q = 1)["ttable"]
+```
+
+The parameter estimates $\phi$ and $\theta$ are all significant but the constant drift $\mu$.
+
+The residual analysis looks fine too.
+
+** Overfit: ARIMA(2, 1, 1) and ARIMA(1, 1, 2)**
+
+We can try to add and AR parameter and an MA parameters to see it they make a difference.
+
+```{r}
+oil_fit1 <- sarima(oil2006, p = 2, d = 1, q = 1, details=FALSE)
+oil_fit1$ttable
+```
+
+```{r}
+oil_fit2 <- sarima(oil2006, p = 1, d = 1, q = 2, details=FALSE)
+oil_fit2$ttable
+```
+
+We can see in each case the `ar2` and `ma2` parameters are not significant an the other former parameters are practically unchanged. Hence, the original model ARIMA(1,1,1) fits well.
+
+## Diagnostics - Simulated Overfitting
+
+One way to check an analysis is to overfit the model by adding an extra parameter to see if it makes a difference in the results. If adding parameters changes the results drastically, then you should rethink your model. If, however, the results do not change by much, you can be confident that your fit is correct.
+
+Simulated 250 observations from an ARIMA(0,1,1) model with MA parameter .9
+```{r}
+x <- arima.sim(model=list(order=c(0,1,1), ma=.9), n=250)
+plot(cbind(x, diff(x)), main=expression(paste("Simulated ARIMA(0,1,1) with ",theta," = .9")))
+```
+
+Plot sample P/ACF pair of the differenced data shows ACF cuts off lag 1 and PCF tails off, confirming an MA model.
+
+```{r}
+invisible(acf2(diff(x)))
+```
+
+Fit the first model, compare parameters, check diagnostics
+
+```{r}
+sarima(x, 0,1,1)
+```
+
+The ARIMA(0,1,1) easily identified with good parameter estimates.
+
+Fit the second model adding a parameter: ARIMA(0,1,2)
+
+```{r}
+sarima(x,0,1,2)
+```
+
+As you can see from the t-table, the second MA parameter is not significantly different from zero and the first MA parameter is approximately the same in each run. Also, the AIC and BIC both increase when the parameter is added. In addition, the residual analysis of your ARIMA(0,1,1) model is fine. All of these facts together indicate that you have a successful model fit.
+
+## Diagnostics - Global Temperatures
+
+```{r}
+plot(cbind(globtemp, diff(globtemp)), main="Global mean land-ocean temperature deviations")
+```
+
+Fit ARIMA(0,1,2) to globtemp and check diagnostics
+
+```{r}
+sarima(globtemp, 0,1,2)
+```
+
+Fit ARIMA(1,1,1) to globtemp and check diagnostics
+
+```{r}
+sarima(globtemp, 1,1,2)
+```
+
+The model diagnostics suggest that both the ARIMA(0,1,2) and the ARIMA(1,1,1) are reasonable models. However, the AIC and BIC suggest that the ARIMA(0,1,2) performs slightly better, so this should be your preferred model.
+
+You can use overfitting to assess the final model. For example, try fitting an ARIMA(1,1,2) or an ARIMA(0,1,3) to the data.  The both show much higher AIC and BIC.
+
+```{r}
+sarima(x, 0,1,3)
+```
+
+```{r}
+sarima(x, 1,1,2)
+```
+
+# Forecasting ARIMA
+
+## Forecasting ARIMA Processes
+
+* The model describes how the dynamics of the time series behave over time  
+* Forecasting simply continues the model dynamics into the future  
+* Use sarima.for() to forecast in the astsa-package.  It's similar to samira() but specifies the forescasting horizon
+
+Forecast 52 weeks from 2006 on shown in red.  The dark grey area denotes +/- 1 Root Mean Squared prediction Error (RMSE) bounds and the light grey ribbon denotes +/- 2 RMSE bounds which represents 95% prediction interval.
+```{r}
+data(oil)
+oil2006 <- window(oil, end = 2006)
+oil2007 <- window(oil, end = 2007)
+invisible(sarima.for(oil2006, n.ahead = 52, 1, 1, 1))
+lines(oil2007, lty=3)
+```
+
+## Forecasting Simulated ARIMA
+
+Simulated 120 observations from an ARIMA(1,1,0) model with AR parameter .9.
+```{r}
+y <- arima.sim(model=list(order=c(1,1,0), ar=.9), n=120)
+```
+Taking the first 100 observations for model fitting.
+```{r}
+x <- window(y, end=100)
+plot(cbind(x, diff(x)), main="Simulated ARIMA(1,1,0) AR=.9")
+```
+
+Plot P/ACF pair of differenced data show ACF tails off and PACF cuts off lag 1 confirming AR(1)
+```{r}
+invisible(acf2(diff(x)))
+```
+
+Fitting the AR(1,1,0) model and checking t-table and diagnostics confirm parameters estimate.
+```{r}
+sarima(x, 1,1,0)
+```
+
+Forecast the data 20 time periods ahead
+
+```{r}
+invisible(sarima.for(x, n.ahead = 20, p = 1, d = 1, q = 0) )
+lines(y)
+```
+
+## Forecasting Global Temperatures
+
+Forecasting the annual global temperature deviations globtemp to 2050.
+
+```{r}
+data(globtemp)
+plot(cbind(globtemp, diff(globtemp)), main="Global mean land-ocean temperature deviations until 2015")
+```
+
+As checked before, ARIMA(0,1,2) is the best fit for this data.  It can be re-checked by fitting an ARIMA(0,1,2) to globtemp.
+```{r}
+sarima(globtemp, 0,1,2)
+```
+
+Forecasting data 35 years into the future
+```{r}
+sarima.for(globtemp, 35, 0,1,2)
 ```
 
