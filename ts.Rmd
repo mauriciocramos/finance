@@ -499,7 +499,7 @@ $$Today = Yesterday + Noise$$
 
 More formally:
 
-$$Y_t = Y{t-1} + \epsilon_t$$
+$$Y_t = Y_{t-1} + \epsilon_t$$
 
 This error $\epsilon_t$ is *mean zero white noise* (WN)
 
@@ -513,8 +513,9 @@ This error $\epsilon_t$ is *mean zero white noise* (WN)
 
 The terms in RW can be arrange as a *fist difference series*
 
-$$Y_t - Y{t-1} = \epsilon_t \rightarrow diff(Y) \ is \ WN$$
-## Simulate the random walk model with $\mu$=0
+$$Y_t - Y_{t-1} = \epsilon_t \rightarrow diff(Y) \ is \ WN$$
+
+## Simulate the random walk model
 
 The random walk (RW) model is also a basic time series model. It is the cumulative sum (or integration) of a mean zero white noise (WN) series, such that the first difference series of a RW is a WN series. Note for reference that the RW model is an ARIMA(0, 1, 0) model, in which the middle entry of 1 indicates that the model's order of integration is 1.
 
@@ -522,7 +523,7 @@ The arima.sim() function can be used to simulate data from the RW by including t
 
 ```{r}
 random_walk <- arima.sim(model = list(order=c(0,1,0)), n = 100)
-plot(random_walk, main="Random Walk with mu = 0")
+plot(random_walk, main="Random Walk")
 ```
 
 ## Calculate the first difference series of the RW model
@@ -863,7 +864,7 @@ Larger values of slope $\phi$ lead to greater autocorrelation.
 
 Negative values of slope $\phi$ result in oscillatory time series.
 
-if $\mu=0$ and slop $\phi=1$ then $$Y_t = Y_{t-1} + \epsilon_t$$ which is $$Today = Yesterday + Noise$$ which is a Random Walk (RW) process and $Y_t$ is not stationary in this case.
+if $\mu=0$ and slope $\phi=1$ then $$Y_t = Y_{t-1} + \epsilon_t$$ which is $$Today = Yesterday + Noise$$ which is a Random Walk (RW) process and $Y_t$ is not stationary in this case.
 
 ## Simulate the autoregressive model
 

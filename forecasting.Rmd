@@ -1,0 +1,319 @@
+---
+title: "Forecasting"
+author: "Maurício Collaça"
+date: "15 de agosto de 2018"
+output: 
+  html_document: 
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+    toc_float:
+        collapsed: false
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment="")
+```
+
+## Forecasting
+
+* What forecasting methods are available that take account of trend, seasonality and other features of the data?  
+* How to measure the accuracy of your forecasts?  
+* How to choose a good forecasting model?
+
+## Creating time series objects in R
+
+```{r}
+library(readxl)
+mydata <- read_excel("exercise1.xlsx")
+```
+
+```{r}
+myts <- ts(mydata[c("Sales", "AdBudget", "GDP")], start = c(1981, 1), frequency = 4)
+window(myts, end=c(1982,2))
+```
+
+# Time series Plots
+```{r}
+library(forecast)
+autoplot(myts, facets=TRUE)
+```
+```{r}
+autoplot(myts, facets=FALSE)
+```
+
+```{r}
+autoplot(gold)
+autoplot(woolyrnq)
+autoplot(gas)
+```
+
+```{r}
+frequency(gold)
+frequency(woolyrnq)
+frequency(gas)
+```
+
+# Seasonal plots
+
+```{r}
+library(fpp2)
+frequency(a10)
+autoplot(a10)
+ggseasonplot(a10)
+ggseasonplot(a10, polar = TRUE)
+```
+
+```{r}
+beer <- window(ausbeer, start=c(1992,1))
+frequency(beer)
+autoplot(beer)
+ggseasonplot(beer)
+ggseasonplot(beer, polar=TRUE)
+ggsubseriesplot(beer)
+```
+
+# Time series patterns
+
+Pattern  | Description
+---------|-----------------------------------------------------------------------
+Trend    | A pattern exists involving a long-term increase OR decrease in the data (this is deliberaly a little vague because a trend is not a well-defined mathematical term)
+Seasonal | A periodic pa!ern exists due to the calendar (e.g. the quarter, month, or day of the week)
+Cyclic   | A pattern exists where the data exhibits rises and falls that are not of fixed period (duration usually of at least 2 years)
+
+```{r}
+
+```
+
+## Examples of time series patterns
+
+Trended and seasonal
+```{r}
+autoplot(window(qauselec, start=1980, end=1995))
+```
+
+Trended, Seasonal and Cyclic
+
+```{r}
+autoplot(bricksq)
+```
+
+No seasonality, looks like a downward trend but it's actually a part of a much longer cycle ( part of a cycle can look like a trend)
+
+```{r}
+autoplot(ustreas)
+```
+
+Because it's annual, it can be seasonal.  The lynx population rises when there's plenty of food and stoop breeding when lacking food.  The lenght of this cycle is between 8 to eleven years
+```{r}
+autoplot(lynx)
+```
+
+# Seasonal or cyclic?
+
+Differences between seasonal and cyclic patterns:
+
+* Seasonal pattern constant length vs. cyclic pattern variable length  
+* If both exists together, the average length of cycle pattern is longer than length of seasonal pa!ern  
+* The Magnitude (size) of the cycles tend to be more variable than the magnitude (size) of seasonal pattern
+
+The timing of peaks and troughs is predictable with seasonal data, but unpredictable in the long term with cyclic data.
+
+# Autocorrelation of non-seasonal time series
+
+autoplot of the oil data
+```{r}
+str(oil)
+```
+
+```{r}
+autoplot(oil) + geom_point()
+```
+
+Create a lag plot of the oil data
+```{r}
+gglagplot(oil, lags=12, do.lines = F) + geom_smooth(method=lm, color="red")
+```
+
+Create an ACF plot of the oil data
+```{r}
+ggAcf(oil, lag.max = Inf)
+```
+
+# Autocorrelation of seasonal and cyclic time series
+
+autoplot the annual sunspot numbers
+```{r}
+str(sunspot.year)
+```
+```{r}
+autoplot(sunspot.year)# + geom_point()
+```
+
+Create a lag plot of the annual sunspot numbers
+```{r}
+gglagplot(sunspot.year, lags=12, do.lines = F) + geom_smooth(method=lm, color="red")
+```
+
+```{r}
+ggAcf(sunspot.year)
+```
+
+Save the lag corresponding to maximum autocorrelation
+```{r}
+frequency(sunspot.year)
+(maxlag_sunspot <- 1)
+```
+
+autoplot the traffic on the Hyndsight blog
+```{r}
+str(hyndsight)
+```
+```{r}
+autoplot(hyndsight)# + geom_point()
+```
+
+Create a lag plot of the traffic on the Hyndsight blog
+```{r}
+gglagplot(hyndsight, lags=12, do.lines = F) + geom_smooth(method=lm, color="red")
+```
+
+```{r}
+ggAcf(hyndsight)
+```
+
+Save the lag corresponding to maximum autocorrelation
+```{r}
+frequency(hyndsight)
+(maxlag_hyndsight <- 7)
+```
+
+# Hints
+
+* Trends induce positive correlations in the early lags.  
+* Seasonality will induce peaks at the seasonal lags.  
+* Cyclicity induces peaks at the average cycle length.
+
+# White Noise
+
+"White noise" is just a time series of iid data which can't be used alone to build a forecasting model.
+```{r}
+wn <- ts(rnorm(36))
+autoplot(wn)
+```
+
+* In WN it's expected each correlation is close to zero  
+* 95% of all correlations for WN should lie between the blue lines, otherwise series is probably not WN.
+```{r}
+ggAcf(wn) + ggtitle("Sample ACF for white noise")
+```
+
+# Example: Pigs slaughtered
+
+At first glance it looks relatively random or possibly a slightly upward trend, but it's hard to see the difference from WN.
+```{r}
+pigs <- window(pigs, start=1990)
+autoplot(pigs/1000) +
+    xlab("Year") +
+    ylab("thousands") +
+    ggtitle("Monthly number of pigs slaughtered in Victoria after 1990")
+```
+
+ACF show the first 3 spikes are significantly larger than zero confirming it's not WN.  There is some information in data that can be used in building a forecasting model.
+```{r}
+ggAcf(pigs) + ggtitle("ACF of monthly pigs slaughtered in Victoria")
+```
+
+# Ljung-Box test
+
+Looking at the ACF is usefull but sometimes is easier to test all the autocorrelations together, rather then considering one separately.
+
+The Ljung-Box test considers the first h autocorrelation values together.
+
+A significant test (small p-value) indicates the data are probably not white noise.
+
+Applying it to the first 24 autocorrelation in the pigs dataset.
+```{r}
+Box.test(pigs, lag = 24, fitdf = 0, type = "Ljung-Box")
+```
+The p-value is very small, thus rejecting the null hypothesis of an independent time series, than suggesting this is not WN.
+
+# White noise summary
+
+* White noise is a time series that is purely random  
+* We can test for white noise by looking at an ACF plot or by doing a Ljung-Box test
+
+# Stock prices and white noise
+
+As you learned in the video, white noise is a term that describes purely random data. You can conduct a Ljung-Box test using the function below to confirm the randomness of a series; a p-value greater than 0.05 suggests that the data are not significantly different from white noise.
+
+There is a well-known result in economics called the **"Efficient Market Hypothesis"** that states that asset prices reflect all available information. A consequence of this is that the **daily changes in stock prices should behave like white noise (ignoring dividends, interest rates and transaction costs)**. The consequence for forecasters is that **the best forecast of the future price is the current price**.
+
+You can test this hypothesis by looking at the goog series.
+
+## Quandl data
+
+```{r}
+library(Quandl)
+Quandl.api_key(readLines("Quandl.api_key.txt",1))
+goog <- Quandl("WIKI/GOOG", type="xts", start_date="1990-01-01")
+str(goog)
+goog <- goog["/2017-02-13"]
+head(goog[, c("Close", "Adj. Close")])
+tail(goog[, c("Close", "Adj. Close")])
+```
+
+Plot the original series
+```{r}
+autoplot(goog[, c("Close","Adj. Close")])
+```
+
+Plot the differenced series
+```{r}
+autoplot(diff(goog[, c("Close","Adj. Close")]))
+```
+
+ACF of the differenced series
+```{r}
+ggAcf(diff(goog[, "Close"]))
+ggAcf(diff(goog[, "Adj. Close"]))
+```
+
+Ljung-Box test of the differenced series
+```{r}
+Box.test(diff(goog[, "Close"]), lag = 10, type = "Ljung")
+Box.test(diff(goog[, "Adj. Close"]), lag = 10, type = "Ljung")
+```
+
+## quantmod data
+```{r}
+library(quantmod)
+getSymbols("GOOG")
+str(GOOG)
+GOOG <- GOOG["/2017-02-13"]
+head(GOOG[, c("GOOG.Close", "GOOG.Adjusted")])
+tail(GOOG[, c("GOOG.Close", "GOOG.Adjusted")])
+```
+
+Plot the original series
+```{r}
+autoplot(GOOG[, c("GOOG.Close", "GOOG.Adjusted")])
+```
+
+Plot the differenced series
+```{r}
+autoplot(diff(GOOG[, c("GOOG.Close", "GOOG.Adjusted")]))
+```
+
+ACF of the differenced series
+```{r}
+ggAcf(diff(GOOG[, "GOOG.Close"]))
+ggAcf(diff(GOOG[, "GOOG.Adjusted"]))
+```
+
+Ljung-Box test of the differenced series
+```{r}
+Box.test(diff(GOOG[, "GOOG.Close"]), lag = 10, type = "Ljung")
+Box.test(diff(GOOG[, "GOOG.Adjusted"]), lag = 10, type = "Ljung")
+```
+

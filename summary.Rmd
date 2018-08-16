@@ -1,0 +1,110 @@
+---
+title: "Times Series Summary"
+author: "Maurício Collaça"
+date: "15 de agosto de 2018"
+output: 
+  html_document: 
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_depth: 1
+    toc_float:
+        collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# White Noise: ARIMA(0,0,0)
+
+```{r}
+white_noise <- arima.sim(model = list(order=c(0,0,0)), n = 100)
+par(mfrow=1:2, mar=c(4,4,3,1))
+plot(white_noise, main="White Noise with mu = 0 and sigma = 1")
+abline(h=c(-1,0,1), lty=2)
+acf(white_noise)
+Box.test(white_noise, lag=10, type="Ljung")
+```
+
+# Random Walk: ARIMA(0,1,0)
+
+$$Today = Yesterday + Noise \rightarrow X_t = X_{t-1} + \epsilon_t $$
+
+```{r}
+random_walk <- arima.sim(model = list(order=c(0,1,0)), n = 100)
+par(mfrow=1:2, mar=c(4,4,3,1))
+plot(random_walk, main="Random Walk")
+abline(h=0, lty=2)
+acf(random_walk)
+Box.test(random_walk, lag=10, type="Ljung")
+```
+
+# Random Walk with drift: ARIMA(0,1,0) ($\mu\neq 0$)
+
+$$Today = Constant + Yesterday + Noise \rightarrow X_t = c + X_{t-1} + \epsilon_t$$
+
+```{r}
+random_walk_drift <- arima.sim(model = list(order=c(0,1,0)), n = 100, mean=1)
+par(mfrow=1:2, mar=c(4,4,3,1))
+plot(random_walk_drift, main="Random Walk with Drift mu = 1")
+abline(h=0, lty=2)
+acf(random_walk_drift)
+Box.test(random_walk_drift, lag=10, type="Ljung")
+```
+
+# RW=cumsum(WN), WN=diff(RW)
+
+The cumulative sum of WN data is RW data. The first difference of RW data is WN data. This is because a RW is simply recursive WN data. By removing the long-term trend, you end up with simple WN.
+
+```{r}
+par(mfrow=c(2,2), mar=c(4,4,3,1))
+plot(white_noise, main="White Noise")
+plot.ts(cumsum(white_noise), main="Cumulative sum of WN is RW")
+plot(random_walk, main="Random Walk")
+plot(diff(random_walk), main="First difference of RW is WN")
+```
+
+# Autoregression (AR)
+
+There are many autoregressive (AR) processes.  The simplest is the first order case AR(1) or ARIMA(1,0,0) in which today's observation is regressed on yesterday's observation at all times $t$.
+
+$$Today = Constant + Slope \times Yesterday + Noise$$
+
+Mean centered version:
+
+$$(Today − Mean) = Slope \times (Y esterday − Mean) + Noise$$
+
+$$Y_t - \mu = \phi(Y_{t-1} - \mu) + \epsilon_t$$
+
+where $\epsilon_t$ is mean zero white noise (WN)
+
+Three parameters:
+
+* The mean $\mu$
+* The slope $\phi$ (phi)
+* The **WN** variance $\sigma_\epsilon^2$
+
+If slope $\phi=0$ then $Y_t = \mu + \epsilon_t$ and $Y_t$ is White Noise $(\mu,\sigma_\epsilon^2)$.
+
+If slope $\phi \neq 0$ then $Y_t$ depends on both $\epsilon_T$ and $Y_{t-1}$ and the process is autocorrelated.
+
+Larger values of slope $\phi$ lead to greater autocorrelation.
+
+Negative values of slope $\phi$ result in oscillatory time series.
+
+if $\mu=0$ and slope $\phi=1$ then $$Y_t = Y_{t-1} + \epsilon_t$$ which is $$Today = Yesterday + Noise$$ which is a Random Walk (RW) process and $Y_t$ is not stationary in this case.
+
+The autoregressive (AR) model is arguably the most widely used time series model. It shares the very familiar interpretation of a simple linear regression, but here each observation is regressed on the previous observation (lag 1). The AR model also includes the white noise (WN) and random walk (RW) models examined in earlier chapters as special cases.
+
+The versatile `arima.sim()` function used in previous chapters can also be used to simulate data from an AR model by setting the `model` argument equal to `list(ar = phi)`, in which `phi` is a slope parameter from the open interval (-1, 1). We also need to specify a series length `n`.
+
+```{r}
+AR1 <- arima.sim(model = list(ar=-.5), n = 100)
+par(mfrow=1:2, mar=c(4,4,3,1))
+plot(AR1, main="AR(1) with slope phi = 1")
+abline(h=0, lty=2)
+acf(AR1)
+Box.test(AR1, lag=10, type="Ljung")
+```
+

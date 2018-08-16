@@ -14,6 +14,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment = "")
+options(width = 100)
 ```
 
 # Time Series Regression Models
@@ -1048,3 +1049,196 @@ sarima(x, p = 0, d = 0, q = 1, P = 0, D = 0, Q = 1, S = 12)
 ```
 
 Time series data collected on a seasonal basis typcially have mixed dependence. For example, what happens in June is often related to what happend in May as well as what happened in June of last year.
+
+### Data Analysis - Unemployment I
+
+Plot the monthly US unemployment (unemp) time series from astsa. Note trend and seasonality.
+```{r}
+plot(unemp, main="Monthly U.S. Unemployment series (1948-1978, n = 372)")
+```
+
+Detrend and plot the data. Save this as d_unemp. Notice the seasonal persistence.  The log was not applied because data doesn't show heteroskedasticity.
+
+```{r}
+d_unemp <- diff(unemp)
+plot(d_unemp)
+```
+
+Seasonally difference the detrended series and save this as dd_unemp. Plot this new data and notice that it looks stationary now.
+
+```{r}
+dd_unemp <- diff(d_unemp, lag = 12)  
+plot(dd_unemp)
+```
+
+### Data Analysis - Unemployment II
+
+Difference the data fully (as in the previous exercise) and plot the sample ACF and PACF of the transformed data to lag 60 months (5 years).
+
+```{r}
+dd_unemp <- diff(diff(unemp), lag = 12)
+invisible(acf2(dd_unemp, max.lag = 60))
+```
+
+Consider that, for:
+
+* the nonseasonal component: the PACF cuts off at lag 2 and the ACF tails off.
+
+    AR(1): p=2, d=1, q=0
+
+* the seasonal component: the ACF cuts off at lag 12 and the PACF tails off at lags 12,24,36...
+
+    SMA(1)12: P=0, D=1, Q=1
+
+Suggest and fit a model using sarima(). Check the residuals to ensure appropriate model fit.
+
+```{r}
+sarima(unemp, p = 2, d = 1, q = 0, P = 0, D = 1, Q = 1, S = 12)
+```
+
+### Data Analysis - Commodity Prices: Chicken
+
+```{r fig.height=7, fig.width=15}
+Months <- c("A", "S", "O", "N", "D", "J", "F", "M", "A", "M", "J", "J")
+plot(chicken, col="dark grey", main="Monthly price of a pound of chicken from August 2001 to July 2016")
+points(chicken, pch=Months, col=1:4, cex=.8)
+abline(v=seq(from=2001, to=2016), lty=2, col="gray")
+```
+
+Removing trend and noticing some mixed seasonal behaviour
+```{r fig.height=7, fig.width=15}
+plot(diff(chicken), col="dark grey")
+points(diff(chicken), pch=Months, col=1:4)
+abline(v=seq(from=2001, to=2016), lty=2, col="gray")
+```
+
+Plot the sample ACF and PACF of the differenced data to lag 60 (5 years). After removing the trend, the sample ACF and PACF suggest an AR(2) model because the PACF cuts off after lag 2 and the ACF tails off. However, the ACF has a small seasonal component remaining. This can be taken care of by fitting an addition SAR(1) component.
+
+```{r}
+invisible(acf2(diff(chicken), max.lag=60))
+```
+
+Fit ARIMA(2,1,0) to chicken - not so good
+```{r}
+sarima(chicken, 2,1,0)
+```
+
+Fit SARIMA(2,1,0,1,0,0,12) to chicken - that works
+```{r}
+sarima(chicken, 2,1,0,1,0,0,12)
+```
+
+### Data Analysis - Birth Rate
+
+```{r fig.height=7, fig.width=15}
+Months <- c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
+plot(birth, col="dark grey", main="U.S. Monthly Live Births (adjusted) in thousands, 1948-1979")
+points(birth, pch=Months, col=1:4, cex=.8)
+abline(v=seq(from=1948, to=1979), lty=2, col="gray")
+```
+
+```{r fig.height=7, fig.width=15}
+Months <- c("F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D", "J")
+plot(diff(birth), col="dark grey", main="U.S. Monthly Live Births (adjusted) in thousands, 1948-1979")
+points(diff(birth), pch=Months, col=1:4, cex=.8)
+abline(v=seq(from=1948, to=1979), lty=2, col="gray")
+```
+
+Plot the sample ACF and PACF of the differenced data to lag 60 (5 years). Notice the seasonal persistence at ACF.  This requires to take the 12-month seasonal difference from the differenced data.
+
+```{r}
+invisible(acf2(diff(birth), max.lag=60))
+```
+
+Taking the 12-month seasonal difference from the differenced data
+```{r fig.height=7, fig.width=15}
+Months <- c("F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D", "J")
+plot(diff(diff(birth), 12), col="dark grey", main="U.S. Monthly Live Births (adjusted) in thousands, 1948-1979")
+points(diff(diff(birth), 12), pch=Months, col=1:4, cex=.8)
+abline(v=seq(from=1948, to=1979), lty=2, col="gray")
+```
+
+Plot P/ACF to lag 60 of seasonal differenced data.
+
+```{r}
+invisible(acf2(diff(diff(birth),12), max.lag=60))
+```
+
+* Seasonal component: SMA(1)
+    * ACF cuts off at lag Q=1
+    * PACF tails off
+
+* Non-Seasonal component: MA(1)
+    * ACF cuts off at lag q=1
+    * PACF tails off
+
+Conclude that an SARIMA(0,1,1)x(0,1,1)12 model seems reasonable.
+
+Fitting SARIMA(0,1,1)x(0,1,1)$_{12}$ shows that all p-values are bellow the limit, confirming it there's still correlation in the residuals so the are not white noise and this is not a good model fit.
+
+```{r}
+sarima(birth, 0,1,1, 0,1,1, 12)
+```
+
+Adding and AR(1) term fitted a good model
+```{r}
+sarima(birth, 1,1,1, 0,1,1, 12)
+```
+
+The residual analysis from the first fit indicated that the residuals were not white noise. Hence, it was necessary to include an additional nonseasonal AR term to account for the extra correlation.
+
+## Forecasting Seasonal ARIMA
+
+Forecasting ARIMA Processes
+
+* Once model is chosen, forecasting is easy because the model describes how the dynamics of the time series behave over time  
+* Simply continue the model dynamics into the future  
+* In the astsa package, use sarima.for() for forecasting
+
+### Forecasting Air Passengers
+
+* In the previous video, we decided that a SARIMA(0,1,1)x(0,1,1)12 model was appropriate
+
+The grayt swatches represent the 1 and 2 Root Mean Squared prediction intervals.
+
+```{r}
+invisible(sarima.for(log(AirPassengers), n.ahead = 24, 0, 1, 1, 0, 1, 1, 12))
+```
+
+### Forecasting Monthly Unemployment
+
+Previously, you fit an SARIMA(2,1,0, 0,1,1)12 model to the monthly US unemployment time series unemp. You will now use that model to forecast the data 3 years.
+
+Fit your previous model to unemp and check the diagnostics.
+```{r}
+sarima(unemp, 2,1,0, 0,1,1, 12)
+```
+
+Forecast the data 3 years into the future
+```{r}
+sarima.for(unemp, n.ahead = 36, 2,1,0,0,1,1,12)
+```
+
+The forecast is able to replicate much of the seasonal variation in the original unemployment data.
+
+### How Hard is it to Forecast Commodity Prices?
+
+As previously mentioned, making money in commodities is not easy. To see a difficulty in predicting a commodity, you will forecast the price of chicken to five years in the future. When you complete your forecasts, you will note that even just a few years out, the acceptable range of prices is very large. This is because commodities are subject to many sources of variation.
+
+Recall that you previously fit an SARIMA(2,1,0, 1,0,0)12 model to the monthly US chicken price series chicken. You will use this model to calculate your forecasts.
+
+Fit the chicken model again and check diagnostics
+```{r}
+sarima(chicken, 2,1,0, 1,0,0, 12)
+```
+
+Forecast the chicken data 5 years into the future
+```{r}
+sarima.for(chicken, n.ahead=60, 2,1,0, 1,0,0, 12)
+```
+
+# What you’ve learned
+
+* How to identify an ARMA model from data looking at ACF and PACF  
+* How to use integrated ARMA (ARIMA) models for nonstationary time series  
+* How to cope with seasonality
