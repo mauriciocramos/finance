@@ -249,7 +249,7 @@ As you learned in the video, white noise is a term that describes purely random 
 
 There is a well-known result in economics called the **"Efficient Market Hypothesis"** that states that asset prices reflect all available information. A consequence of this is that the **daily changes in stock prices should behave like white noise (ignoring dividends, interest rates and transaction costs)**. The consequence for forecasters is that **the best forecast of the future price is the current price**.
 
-You can test this hypothesis by looking at the goog series.
+You can test this hypothesis by looking at the closing stock price for Google ending on February 13, 2017.
 
 ## Quandl data
 
@@ -257,33 +257,33 @@ You can test this hypothesis by looking at the goog series.
 library(Quandl)
 Quandl.api_key(readLines("Quandl.api_key.txt",1))
 goog <- Quandl("WIKI/GOOG", type="xts", start_date="1990-01-01")
-str(goog)
 goog <- goog["/2017-02-13"]
-head(goog[, c("Close", "Adj. Close")])
-tail(goog[, c("Close", "Adj. Close")])
+str(goog)
+head(goog[, "Close"])
+tail(goog[, "Close"])
 ```
 
 Plot the original series
 ```{r}
-autoplot(goog[, c("Close","Adj. Close")])
+autoplot(goog[, "Close"])
 ```
 
 Plot the differenced series
 ```{r}
-autoplot(diff(goog[, c("Close","Adj. Close")]))
+autoplot(diff(goog[, "Close"]))
 ```
 
 ACF of the differenced series
 ```{r}
 ggAcf(diff(goog[, "Close"]))
-ggAcf(diff(goog[, "Adj. Close"]))
 ```
 
 Ljung-Box test of the differenced series
 ```{r}
 Box.test(diff(goog[, "Close"]), lag = 10, type = "Ljung")
-Box.test(diff(goog[, "Adj. Close"]), lag = 10, type = "Ljung")
 ```
+
+The p-value higher than 0.05 resulted from the Ljung-Box test of differenced closing price until February 13, 2017 confirms the null hypothesis of White Noise.
 
 ## quantmod data
 ```{r}
@@ -291,29 +291,28 @@ library(quantmod)
 getSymbols("GOOG")
 str(GOOG)
 GOOG <- GOOG["/2017-02-13"]
-head(GOOG[, c("GOOG.Close", "GOOG.Adjusted")])
-tail(GOOG[, c("GOOG.Close", "GOOG.Adjusted")])
+head(GOOG[, "GOOG.Close"])
+tail(GOOG[, "GOOG.Close"])
 ```
 
 Plot the original series
 ```{r}
-autoplot(GOOG[, c("GOOG.Close", "GOOG.Adjusted")])
+autoplot(GOOG[, "GOOG.Close"])
 ```
 
 Plot the differenced series
 ```{r}
-autoplot(diff(GOOG[, c("GOOG.Close", "GOOG.Adjusted")]))
+autoplot(diff(GOOG[, "GOOG.Close"]))
 ```
 
 ACF of the differenced series
 ```{r}
 ggAcf(diff(GOOG[, "GOOG.Close"]))
-ggAcf(diff(GOOG[, "GOOG.Adjusted"]))
 ```
 
 Ljung-Box test of the differenced series
 ```{r}
 Box.test(diff(GOOG[, "GOOG.Close"]), lag = 10, type = "Ljung")
-Box.test(diff(GOOG[, "GOOG.Adjusted"]), lag = 10, type = "Ljung")
 ```
 
+The p-value higher than 0.05 resulted from the Ljung-Box test of differenced closing price until February 13, 2017 confirms the null hypothesis of White Noise.
